@@ -1,0 +1,9 @@
+services:
+  w2g:
+    build: .
+    container_name: w2g
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    restart: unless-stopped

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>w2g - watch together</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <main class="layout">
+    <section class="video-panel">
+      <iframe
+        class="video-frame"
+        src="https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;"
+        allowfullscreen
+        frameborder="0"
+        title="VK Video Player">
+      </iframe>
+    </section>
+    <aside class="chat-panel">
+      <header class="chat-header">
+        <h1>Chat</h1>
+        <span id="status" class="status offline">offline</span>
+      </header>
+      <div id="messages" class="messages" aria-live="polite"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="message-input" type="text" maxlength="500" placeholder="Type message..." autocomplete="off" required>
+        <button type="submit">Send</button>
+      </form>
+    </aside>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>
