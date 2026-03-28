@@ -1,0 +1,22 @@
+
+.watch-later {
+    border-bottom: 2px solid #000000;
+}
+.avatar {
+    border-radius: 50%;
+    width: 150px;
+    height: 150px;
+}
+.profile_head h1 {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+.profile-card {
+     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
