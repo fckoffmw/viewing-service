@@ -2,13 +2,25 @@ package main
 
 import (
 	"io/fs"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
 
+	"w2g/internal/auth"
 	"w2g/internal/chat"
+	"w2g/internal/repo"
 )
+
+var log *slog.Logger
+
+func init() {
+	log = slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}),
+	)
+}
 
 func main() {
 	addr := ":" + getEnv("PORT", "8080")
@@ -16,7 +28,16 @@ func main() {
 	hub := chat.NewHub(2)
 	go hub.Run()
 
+	csvStorage, err := repo.NewCSVStorage("./storage/")
+	if err != nil {
+		log.Error("when creating csv storage", "error", err)
+		os.Exit(1)
+	}
+	authService := auth.NewService(csvStorage)
+	authHandler := auth.NewHandler(authService)
+
 	mux := http.NewServeMux()
+
 	mux.Handle("/", http.FileServer(http.Dir("web")))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
@@ -27,9 +48,14 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// Проверяем, что web-клиент действительно существует при запуске.
+	// api
+	// login
+	mux.HandleFunc("POST /api/login", authHandler.Login)
+	// logout
+	// register
+
 	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
-		log.Fatalf("web/index.html not found: %v", err)
+		log.Error("web/index.html not found", "error", err)
 	}
 
 	server := &http.Server{
@@ -37,9 +63,9 @@ func main() {
 		Handler: mux,
 	}
 
-	log.Printf("w2g server listening on %s", addr)
+	log.Info("w2g server listening", "port", addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+		log.Error("error", err)
 	}
 }
 

@@ -37,4 +37,7 @@ temp/
 *.swp
 *.swn
 
+
+/storage/
 promts.md
+TODO.md
