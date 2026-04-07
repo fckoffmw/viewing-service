@@ -7,32 +7,129 @@
     <link rel="stylesheet" href="profile.css">
 </head>
 <body>
-    <main class="profile-page">
-        <header class="profile_head">
-            <h1>Мой профиль</h1>
-            <figure class="profile-card">
-                <img src ="profile_card.jpg" alt="avatar" class="avatar">
-                <figcaption contenteditable="true"> <strong>My Nickname</strong> </figcaption>
-            </figure>
-        </header>
-        <section class="info">
-            <div class="watch-later">
-                <h2>Смотреть позже</h2>
-                <ul class="watch-later-list">
-                    <li contenteditable="true">ледниковый период</li>
-                    <li contenteditable="true">monster</li>
-                </ul>
+    <div class="profile-page">
+        <aside class="sidebar">
+            <div class="sidebar-content">
+                <a href="/" class="back-btn">Назад</a>
+                <div class="user-card">
+                    <img src="profile_card.jpg" alt="Аватар пользователя" class="user-avatar">
+                    <h1 class="user-name">Кинозритель</h1>
+                    <p class="user-tagline">Люблю хорошее кино</p>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a href="#watch-later" class="nav-link">Смотреть позже</a>
+                    <a href="#reviews" class="nav-link">Мои отзывы</a>
+                    <a href="#history" class="nav-link">История просмотра</a>
+                </nav>
             </div>
-            <div class="notes">
-                <h2>Мои заметки</h2>
-                <ul class="notes-list">
-                    <li contenteditable="true">
-                        Фильм "Семь"
-                        <p contenteditable="true">Очень понравился фильм, особенно Брэд Пит...</p>
-                    </li>
-                </ul>
-            </div>
-        </section>
-    </main>
+        </aside>
+        <main class="main-content">
+            <section id="watch-later" class="content-section">
+                <h2 class="section-heading">Смотреть позже</h2>
+                <div class="video-grid">
+                    <article class="video-card">
+                        <div class="video-placeholder"></div>
+                        <div class="video-details">
+                            <h3>Ледниковый период</h3>
+                            <p class="video-year">2002</p>
+                        </div>
+                    </article>
+                    <article class="video-card">
+                        <div class="video-placeholder"></div>
+                        <div class="video-details">
+                            <h3>Monster</h3>
+                            <p class="video-year">2003</p>
+                        </div>
+                    </article>
+                    <article class="video-card">
+                        <div class="video-placeholder"></div>
+                        <div class="video-details">
+                            <h3>Начало</h3>
+                            <p class="video-year">2010</p>
+                        </div>
+                    </article>
+                    <article class="video-card">
+                        <div class="video-placeholder"></div>
+                        <div class="video-details">
+                            <h3>Темный рыцарь</h3>
+                            <p class="video-year">2008</p>
+                        </div>
+                    </article>
+                    
+                </div>
+            </section>
+            <section id="reviews" class="content-section">
+                <h2 class="section-heading">Мои отзывы</h2>
+                <div class="reviews-grid">
+                    <article class="review-item">
+                        <div class="review-rating">9.8</div>
+                        <h3 class="review-title">Семь</h3>
+                        <p class="review-comment">
+                            Очень понравился фильм, особенно Брэд Питт. Концовка просто шикарная!
+                        </p>
+                    </article>
+                    <article class="review-item">
+                        <div class="review-rating">9.5</div>
+                        <h3 class="review-title">Убийство в восточном экспрессе</h3>
+                        <p class="review-comment">
+                            Развязка супер, Агата Кристи икона
+                        </p>
+                    </article>
+                    <article class="review-item">
+                        <div class="review-rating">4</div>
+                        <h3 class="review-title">Разрушение</h3>
+                        <p class="review-comment">
+                            Неинтересно, полный калл
+                        </p>
+                    </article>
+                    <article class="review-item">
+                        <div class="review-rating">Тики-тики</div>
+                        <h3 class="review-title">10</h3>
+                        <p class="review-comment">
+                            Этот фильм еще не сняли, но я бы смотрела его вечно
+                        </p>
+                    </article>
+                    <article class="review-item">
+                        <div class="review-rating">Твое имя</div>
+                        <h3 class="review-title">9</h3>
+                        <p class="review-comment">
+                            Супер аниме очень милое
+                    </article>
+                </div>
+            </section>
+            <section id="history" class="content-section">
+                <h2 class="section-heading">История просмотра</h2>
+                <div class="history-grid">
+                    <article class="history-card">
+                        <div class="video-placeholder"></div>
+                        <div class="history-details">
+                            <h3>Бойцовский клуб</h3>
+                            <time class="history-date" datetime="2024-04-05">5 апреля 2024</time>
+                        </div>
+                    </article>
+                    <article class="history-card">
+                        <div class="video-placeholder"></div>
+                        <div class="history-details">
+                            <h3>Матрица</h3>
+                            <time class="history-date" datetime="2024-04-02">2 апреля 2024</time>
+                        </div>
+                    </article>
+                    <article class="history-card">
+                        <div class="video-placeholder"></div>
+                        <div class="history-details">
+                            <h3>Криминальное чтиво</h3>
+                            <time class="history-date" datetime="2024-04-03">3 апреля 2024</time>
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+
+        <main class="profile-page">
+            
+        </main>
+    
+    </div>
 </body>
 </html>
