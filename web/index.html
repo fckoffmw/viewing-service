@@ -1,35 +1,60 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>w2g - watch together</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>w2g — Content</title>
+  <link rel="stylesheet" href="/static/content.css">
 </head>
 <body>
-  <main class="layout">
-    <section class="video-panel">
-      <iframe
-        class="video-frame"
-        src="https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;"
-        allowfullscreen
-        frameborder="0"
-        title="VK Video Player">
-      </iframe>
-    </section>
-    <aside class="chat-panel">
-      <header class="chat-header">
-        <h1>Chat</h1>
-        <span id="status" class="status offline">offline</span>
-      </header>
-      <div id="messages" class="messages" aria-live="polite"></div>
-      <form id="chat-form" class="chat-form">
-        <input id="message-input" type="text" maxlength="500" placeholder="Type message..." autocomplete="off" required>
-        <button type="submit">Send</button>
-      </form>
-    </aside>
-  </main>
-  <script src="/static/app.js"></script>
+  <div class="container">
+    <h1>Content</h1>
+    <div id="frames"></div>
+  </div>
+
+  <script>
+    async function loadFrames() {
+      const container = document.getElementById("frames");
+
+      let res;
+      try {
+        res = await fetch("/api/frames");
+      } catch {
+        container.innerHTML = '<p class="error">failed to load</p>';
+        return;
+      }
+
+      if (!res.ok) {
+        container.innerHTML = '<p class="error">server error</p>';
+        return;
+      }
+
+      const frames = await res.json();
+      if (frames.length === 0) {
+        container.innerHTML = "<p style='color:#666'>nothing here yet</p>";
+        return;
+      }
+
+      container.innerHTML = frames
+        .map((f) => {
+          return (
+            '<div class="frame-card">' +
+            '<h2>' + esc(f.name) + '</h2>' +
+            '<div class="frame-id">id: ' + esc(f.id) + '</div>' +
+            '<div class="frame-src">' + esc(f.iframe) + '</div>' +
+            "</div>"
+          );
+        })
+        .join("");
+    }
+
+    function esc(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    loadFrames();
+  </script>
 </body>
 </html>

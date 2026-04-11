@@ -1,12 +1,14 @@
 package repo
 
 import (
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
 	"w2g/internal/auth"
+	"w2g/internal/frame"
 )
 
 var (
@@ -15,7 +17,10 @@ var (
 		fields:   []string{"id", "username", "pass_hash"},
 	}
 
-	dataStruct = []dataUnit{usersUnit}
+	framesUnit = dataUnit{
+		filename: "frames.csv",
+		fields:   []string{"id", "name", "iframe"},
+	}
 )
 
 type dataUnit struct {
@@ -24,6 +29,8 @@ type dataUnit struct {
 }
 
 type csvStorage struct {
+	dataStruct map[string]dataUnit
+	basePath   string
 }
 
 func NewCSVStorage(path string) (*csvStorage, error) {
@@ -44,6 +51,10 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 		filenames = append(filenames, file.Name())
 	}
 
+	dataStruct := make(map[string]dataUnit)
+	dataStruct["users"] = usersUnit
+	dataStruct["frames"] = framesUnit
+
 	for _, unit := range dataStruct {
 		if slices.Contains(filenames, unit.filename) {
 			continue
@@ -54,14 +65,50 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 			return nil, fmt.Errorf("error when creating %s: %w", file, err)
 		}
 
-		file.WriteString(strings.Join(unit.fields, ","))
+		file.WriteString(strings.Join(unit.fields, ",") + "\n")
 
 		file.Close()
 	}
 
-	return &csvStorage{}, nil
+	return &csvStorage{
+		dataStruct: dataStruct,
+		basePath:   path,
+	}, nil
 }
 
 func (s csvStorage) GetUserByUsername(username string) (auth.User, error) {
 	return auth.User{}, nil
+}
+
+func (s csvStorage) GetAllFrames() ([]frame.Frame, error) {
+	filename := s.dataStruct["frames"].filename
+
+	file, err := os.Open(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("error when open file %s: %w", file, err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	var frames []frame.Frame
+	rows, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error when read file %s: %w", file, err)
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		frame := frame.Frame{
+			ID:     row[0],
+			Name:   row[1],
+			Iframe: row[2],
+		}
+		frames = append(frames, frame)
+	}
+
+	return frames, nil
 }

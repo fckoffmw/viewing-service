@@ -39,7 +39,8 @@ temp/
 
 
 /storage/
-promts.md
+/.qwen/
+prompts.md
 TODO.md
 
 /web/

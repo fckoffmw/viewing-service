@@ -9,6 +9,7 @@ import (
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
+	"w2g/internal/frame"
 	"w2g/internal/repo"
 )
 
@@ -33,6 +34,10 @@ func main() {
 		log.Error("when creating csv storage", "error", err)
 		os.Exit(1)
 	}
+
+	frameService := frame.NewService(csvStorage)
+	frameHandler := frame.NewHandler(frameService)
+
 	authService := auth.NewService(csvStorage)
 	authHandler := auth.NewHandler(authService)
 
@@ -53,6 +58,9 @@ func main() {
 	mux.HandleFunc("POST /api/login", authHandler.Login)
 	// logout
 	// register
+
+	// frames
+	mux.HandleFunc("GET /api/frames", frameHandler.GetAllFrames)
 
 	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
 		log.Error("web/index.html not found", "error", err)

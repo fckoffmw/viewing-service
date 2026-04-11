@@ -32,10 +32,14 @@
 
 storage (csv):
 - getUserById(id) User
+- getAllFrames() []frame
 
 user model
 - id
 - username
 - pass-hash
 
-
+frame model
+- id
+- name
+- frame
