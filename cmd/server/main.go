@@ -9,8 +9,9 @@ import (
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
-	"w2g/internal/frame"
 	"w2g/internal/repo"
+	"w2g/internal/room"
+	"w2g/internal/source"
 )
 
 var log *slog.Logger
@@ -35,11 +36,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	frameService := frame.NewService(csvStorage)
-	frameHandler := frame.NewHandler(frameService)
+	sourceService := source.NewService(csvStorage)
+	sourceHandler := source.NewHandler(sourceService, log)
 
 	authService := auth.NewService(csvStorage)
 	authHandler := auth.NewHandler(authService)
+
+	roomService := room.NewService(csvStorage)
+	roomHandler := room.NewHandler(roomService, log)
 
 	mux := http.NewServeMux()
 
@@ -54,13 +58,17 @@ func main() {
 	})
 
 	// api
+
 	// login
 	mux.HandleFunc("POST /api/login", authHandler.Login)
 	// logout
 	// register
 
-	// frames
-	mux.HandleFunc("GET /api/frames", frameHandler.GetAllFrames)
+	// sources
+	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)
+
+	// room
+	mux.HandleFunc("GET /api/room", roomHandler.GetGlobalRoom)
 
 	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
 		log.Error("web/index.html not found", "error", err)

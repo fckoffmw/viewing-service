@@ -1,7 +1,7 @@
-package frame
+package source
 
 type repository interface {
-	GetAllFrames() ([]Frame, error)
+	GetAllSources() ([]Source, error)
 }
 
 type service struct {
@@ -14,6 +14,6 @@ func NewService(r repository) *service {
 	}
 }
 
-func (s service) GetAllFrames() ([]Frame, error) {
-	return s.repo.GetAllFrames()
+func (s service) GetAllSources() ([]Source, error) {
+	return s.repo.GetAllSources()
 }

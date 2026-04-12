@@ -18,7 +18,7 @@
 
       let res;
       try {
-        res = await fetch("/api/frames");
+        res = await fetch("/api/source");
       } catch {
         container.innerHTML = '<p class="error">failed to load</p>';
         return;
@@ -41,7 +41,7 @@
             '<div class="frame-card">' +
             '<h2>' + esc(f.name) + '</h2>' +
             '<div class="frame-id">id: ' + esc(f.id) + '</div>' +
-            '<div class="frame-src">' + esc(f.iframe) + '</div>' +
+            '<div class="frame-src">' + esc(f.url) + '</div>' +
             "</div>"
           );
         })

@@ -8,7 +8,8 @@ import (
 	"slices"
 	"strings"
 	"w2g/internal/auth"
-	"w2g/internal/frame"
+	"w2g/internal/room"
+	"w2g/internal/source"
 )
 
 var (
@@ -17,9 +18,14 @@ var (
 		fields:   []string{"id", "username", "pass_hash"},
 	}
 
-	framesUnit = dataUnit{
-		filename: "frames.csv",
-		fields:   []string{"id", "name", "iframe"},
+	sourcesUnit = dataUnit{
+		filename: "sources.csv",
+		fields:   []string{"id", "name", "url"},
+	}
+
+	roomsUnit = dataUnit{
+		filename: "rooms.csv",
+		fields:   []string{"id", "source_id"},
 	}
 )
 
@@ -53,7 +59,8 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 
 	dataStruct := make(map[string]dataUnit)
 	dataStruct["users"] = usersUnit
-	dataStruct["frames"] = framesUnit
+	dataStruct["sources"] = sourcesUnit
+	dataStruct["rooms"] = roomsUnit
 
 	for _, unit := range dataStruct {
 		if slices.Contains(filenames, unit.filename) {
@@ -80,8 +87,8 @@ func (s csvStorage) GetUserByUsername(username string) (auth.User, error) {
 	return auth.User{}, nil
 }
 
-func (s csvStorage) GetAllFrames() ([]frame.Frame, error) {
-	filename := s.dataStruct["frames"].filename
+func (s csvStorage) GetAllSources() ([]source.Source, error) {
+	filename := s.dataStruct["sources"].filename
 
 	file, err := os.Open(s.basePath + filename)
 	if err != nil {
@@ -91,7 +98,7 @@ func (s csvStorage) GetAllFrames() ([]frame.Frame, error) {
 
 	reader := csv.NewReader(file)
 
-	var frames []frame.Frame
+	var frames []source.Source
 	rows, err := reader.ReadAll()
 	if err != nil {
 		return nil, fmt.Errorf("error when read file %s: %w", file, err)
@@ -102,13 +109,112 @@ func (s csvStorage) GetAllFrames() ([]frame.Frame, error) {
 			continue
 		}
 
-		frame := frame.Frame{
-			ID:     row[0],
-			Name:   row[1],
-			Iframe: row[2],
+		frame := source.Source{
+			ID:   row[0],
+			Name: row[1],
+			Url:  row[2],
 		}
 		frames = append(frames, frame)
 	}
 
 	return frames, nil
+}
+
+func (s csvStorage) GetSourceById(id string) (*source.Source, error) {
+	filename := s.dataStruct["sources"].filename
+
+	file, err := os.Open(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("error when open file %s: %w", file, err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	var sources []source.Source
+	rows, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error when read file %s: %w", file, err)
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		source := source.Source{
+			ID:   row[0],
+			Name: row[1],
+			Url:  row[2],
+		}
+		sources = append(sources, source)
+	}
+
+	for _, source := range sources {
+		if source.ID == id {
+			return &source, nil
+		}
+	}
+
+	return nil, fmt.Errorf("source with id %s not found", id)
+}
+
+func (s csvStorage) GetGlobalRoom() (*room.Room, error) {
+	filename := s.dataStruct["rooms"].filename
+
+	file, err := os.Open(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("error when open file %s: %w", file, err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	var rooms []room.Room
+	rows, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("error when read file %s: %w", file, err)
+	}
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		room := room.Room{
+			ID:       row[0],
+			SourceID: row[1],
+		}
+		rooms = append(rooms, room)
+	}
+
+	if len(rooms) == 0 {
+		return nil, fmt.Errorf("empty rooms was returned")
+	}
+
+	return &rooms[0], nil
+}
+
+func (s csvStorage) UpdateGlobalRoomSource(source source.Source) (string, error) {
+	globalRoom, err := s.GetGlobalRoom()
+	if err != nil {
+		return "", fmt.Errorf("error when getting global room: %w", err)
+	}
+
+	globalRoom.SourceID = source.ID
+
+	filename := s.dataStruct["rooms"].filename
+
+	file, err := os.Open(s.basePath + filename)
+	if err != nil {
+		return "", fmt.Errorf("error when open file %s: %w", file, err)
+	}
+	defer file.Close()
+
+	_, err = file.WriteString(strings.Join(s.dataStruct["rooms"].fields, ",") + "\n" + globalRoom.ID + "," + globalRoom.SourceID + "\n")
+	if err != nil {
+		return "", fmt.Errorf("when writing to file %s: %w", file, err)
+	}
+
+	return source.ID, nil
 }
