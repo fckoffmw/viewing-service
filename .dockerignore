@@ -1,0 +1,6 @@
+.git/
+.qwen/
+storage/
+*.log
+*.md
+.env*
