@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>w2g — Контент</title>
+  <link rel="stylesheet" href="/static/content.css">
+</head>
+<body>
+  <div class="container">
+    <h1><a href="/index.html">w2g</a> — Контент</h1>
+    <a href="/room.html" class="to-room-btn">→ В комнату</a>
+    <div id="sources"></div>
+  </div>
+
+  <script>
+    var activeSourceId = null;
+
+    async function loadSources() {
+      var container = document.getElementById("sources");
+
+      // загружаем текущий источник комнаты
+      try {
+        var roomRes = await fetch("/api/room");
+        if (roomRes.ok) {
+          var room = await roomRes.json();
+          if (room.current_source) {
+            activeSourceId = room.current_source.id;
+          }
+        }
+      } catch {}
+
+      // загружаем источники
+      var res;
+      try {
+        res = await fetch("/api/sources");
+      } catch {
+        container.innerHTML = '<p class="error">Не удалось загрузить</p>';
+        return;
+      }
+
+      if (!res.ok) {
+        container.innerHTML = '<p class="error">Ошибка сервера</p>';
+        return;
+      }
+
+      var sources = await res.json();
+      if (sources.length === 0) {
+        container.innerHTML = '<p>Пока пусто</p>';
+        return;
+      }
+
+      container.innerHTML = sources
+        .map(function(s) {
+          var isActive = s.id === activeSourceId;
+          var badge = isActive ? '<span class="badge">активен</span>' : '';
+          var cardClass = isActive ? 'source-card source-card-active' : 'source-card';
+          return (
+            '<div class="' + cardClass + '">' +
+              '<div class="source-info">' +
+                '<h2>' + esc(s.name) + ' ' + badge + '</h2>' +
+                '<span class="source-id">id: ' + esc(s.id) + '</span>' +
+              '</div>' +
+              '<button onclick="setActive(\'' + s.id + '\')">Сделать активным</button>' +
+            '</div>'
+          );
+        })
+        .join("");
+    }
+
+    async function setActive(id) {
+      try {
+        var res = await fetch("/api/room/source", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ source_id: id }),
+        });
+
+        var data = await res.json();
+
+        if (res.ok) {
+          loadSources();
+        } else {
+          alert("Ошибка: " + data.message);
+        }
+      } catch {
+        alert("Не удалось обновить источник");
+      }
+    }
+
+    function esc(s) {
+      var d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    loadSources();
+  </script>
+</body>
+</html>
