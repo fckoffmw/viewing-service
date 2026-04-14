@@ -1,60 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>w2g — Content</title>
-  <link rel="stylesheet" href="/static/content.css">
+  <title>w2g</title>
+  <link rel="stylesheet" href="/static/index.css">
 </head>
 <body>
   <div class="container">
-    <h1>Content</h1>
-    <div id="frames"></div>
+    <h1>w2g</h1>
+    <div class="buttons">
+      <a href="/content.html" class="btn">К контенту</a>
+      <a href="/room.html" class="btn">К комнате</a>
+    </div>
   </div>
-
-  <script>
-    async function loadFrames() {
-      const container = document.getElementById("frames");
-
-      let res;
-      try {
-        res = await fetch("/api/source");
-      } catch {
-        container.innerHTML = '<p class="error">failed to load</p>';
-        return;
-      }
-
-      if (!res.ok) {
-        container.innerHTML = '<p class="error">server error</p>';
-        return;
-      }
-
-      const frames = await res.json();
-      if (frames.length === 0) {
-        container.innerHTML = "<p style='color:#666'>nothing here yet</p>";
-        return;
-      }
-
-      container.innerHTML = frames
-        .map((f) => {
-          return (
-            '<div class="frame-card">' +
-            '<h2>' + esc(f.name) + '</h2>' +
-            '<div class="frame-id">id: ' + esc(f.id) + '</div>' +
-            '<div class="frame-src">' + esc(f.url) + '</div>' +
-            "</div>"
-          );
-        })
-        .join("");
-    }
-
-    function esc(s) {
-      const d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    loadFrames();
-  </script>
 </body>
 </html>

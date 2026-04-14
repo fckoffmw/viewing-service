@@ -69,6 +69,7 @@ func main() {
 
 	// room
 	mux.HandleFunc("GET /api/room", roomHandler.GetGlobalRoom)
+	mux.HandleFunc("PATCH /api/room/source", roomHandler.PatchGlobalRoomSource)
 
 	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
 		log.Error("web/index.html not found", "error", err)

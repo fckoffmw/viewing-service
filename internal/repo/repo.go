@@ -195,26 +195,32 @@ func (s csvStorage) GetGlobalRoom() (*room.Room, error) {
 	return &rooms[0], nil
 }
 
-func (s csvStorage) UpdateGlobalRoomSource(source source.Source) (string, error) {
+func (s csvStorage) UpdateGlobalRoomSource(sourceID string) (string, error) {
 	globalRoom, err := s.GetGlobalRoom()
 	if err != nil {
 		return "", fmt.Errorf("error when getting global room: %w", err)
 	}
 
-	globalRoom.SourceID = source.ID
+	globalRoom.SourceID = sourceID
 
 	filename := s.dataStruct["rooms"].filename
 
-	file, err := os.Open(s.basePath + filename)
+	file, err := os.Create(s.basePath + filename)
 	if err != nil {
-		return "", fmt.Errorf("error when open file %s: %w", file, err)
+		return "", fmt.Errorf("error when open file %s: %w", filename, err)
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(strings.Join(s.dataStruct["rooms"].fields, ",") + "\n" + globalRoom.ID + "," + globalRoom.SourceID + "\n")
-	if err != nil {
-		return "", fmt.Errorf("when writing to file %s: %w", file, err)
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	if err := writer.Write(s.dataStruct["rooms"].fields); err != nil {
+		return "", fmt.Errorf("error when writing header: %w", err)
 	}
 
-	return source.ID, nil
+	if err := writer.Write([]string{globalRoom.ID, globalRoom.SourceID}); err != nil {
+		return "", fmt.Errorf("error when writing row: %w", err)
+	}
+
+	return sourceID, nil
 }
