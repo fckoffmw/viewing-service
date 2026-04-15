@@ -1,0 +1,314 @@
+package repo
+
+import (
+	"os"
+	"testing"
+)
+
+type testRow struct {
+	ID   string
+	Name string
+}
+
+type testRow4 struct {
+	ID   string
+	Name string
+	Url  string
+	Tag  string
+}
+
+type rowChecker interface {
+	check(t *testing.T, index int, expected rowChecker)
+}
+
+func (r testRow) check(t *testing.T, index int, expected rowChecker) {
+	exp := expected.(testRow)
+	if r.ID != exp.ID {
+		t.Errorf("row %d: ID expected %q, got %q", index, exp.ID, r.ID)
+	}
+	if r.Name != exp.Name {
+		t.Errorf("row %d: Name expected %q, got %q", index, exp.Name, r.Name)
+	}
+}
+
+func (r testRow4) check(t *testing.T, index int, expected rowChecker) {
+	exp := expected.(testRow4)
+	if r.ID != exp.ID {
+		t.Errorf("row %d: ID expected %q, got %q", index, exp.ID, r.ID)
+	}
+	if r.Name != exp.Name {
+		t.Errorf("row %d: Name expected %q, got %q", index, exp.Name, r.Name)
+	}
+	if r.Url != exp.Url {
+		t.Errorf("row %d: Url expected %q, got %q", index, exp.Url, r.Url)
+	}
+	if r.Tag != exp.Tag {
+		t.Errorf("row %d: Tag expected %q, got %q", index, exp.Tag, r.Tag)
+	}
+}
+
+type testCase struct {
+	name      string
+	rows      [][]string
+	expected  []rowChecker
+	wantError bool
+}
+
+func TestRowsTo(t *testing.T) {
+	tests := []testCase{
+		{
+			name:     "header only",
+			rows:     [][]string{{"id", "name"}},
+			expected: nil,
+		},
+		{
+			name: "one row",
+			rows: [][]string{
+				{"id", "name"},
+				{"1", "test"},
+			},
+			expected: []rowChecker{testRow{ID: "1", Name: "test"}},
+		},
+		{
+			name: "multiple rows",
+			rows: [][]string{
+				{"id", "name"},
+				{"1", "first"},
+				{"2", "second"},
+			},
+			expected: []rowChecker{
+				testRow{ID: "1", Name: "first"},
+				testRow{ID: "2", Name: "second"},
+			},
+		},
+		{
+			name: "four fields",
+			rows: [][]string{
+				{"id", "name", "url", "tag"},
+				{"1", "film", "http://a", "movie"},
+				{"2", "show", "http://b", "series"},
+			},
+			expected: []rowChecker{
+				testRow4{ID: "1", Name: "film", Url: "http://a", Tag: "movie"},
+				testRow4{ID: "2", Name: "show", Url: "http://b", Tag: "series"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if len(tt.expected) == 0 {
+				got, err := rowsTo[testRow](tt.rows)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				if len(got) != 0 {
+					t.Fatalf("expected 0 rows, got %d", len(got))
+				}
+				return
+			}
+
+			switch tt.expected[0].(type) {
+			case testRow:
+				got, err := rowsTo[testRow](tt.rows)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				for i := range got {
+					got[i].check(t, i, tt.expected[i])
+				}
+			case testRow4:
+				got, err := rowsTo[testRow4](tt.rows)
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				for i := range got {
+					got[i].check(t, i, tt.expected[i])
+				}
+			}
+		})
+	}
+}
+
+func TestRowsTo_Errors(t *testing.T) {
+	type intRow struct {
+		ID int
+	}
+
+	_, err := rowsTo[intRow]([][]string{
+		{"id"},
+		{"not_a_number"},
+	})
+	if err == nil {
+		t.Fatal("expected error for invalid int, got nil")
+	}
+}
+
+func setupTestStorage(t *testing.T, files map[string]string) *csvStorage {
+	t.Helper()
+
+	dir := t.TempDir() + "/"
+
+	// сначала создаём хранилище (пустые csv)
+	storage, err := NewCSVStorage(dir)
+	if err != nil {
+		t.Fatalf("failed to create storage: %v", err)
+	}
+
+	// потом перезаписываем тестовыми данными
+	for name, content := range files {
+		if err := os.WriteFile(dir+name, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write file %s: %v", name, err)
+		}
+	}
+
+	return storage
+}
+
+func TestNewCSVStorage(t *testing.T) {
+	dir := t.TempDir() + "/"
+
+	_, err := NewCSVStorage(dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// проверяем что файлы созданы
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("failed to read dir: %v", err)
+	}
+
+	if len(files) != 3 {
+		t.Fatalf("expected 3 csv files, got %d", len(files))
+	}
+}
+
+func TestNewCSVStorage_InvalidPath(t *testing.T) {
+	_, err := NewCSVStorage("/nonexistent/path")
+	if err == nil {
+		t.Fatal("expected error for nonexistent path, got nil")
+	}
+}
+
+func TestGetAllSources(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n1,Seven,http://vk.com/seven\n2,Matrix,http://vk.com/matrix\n",
+		"rooms.csv":   "id,source_id\n1,1\n",
+	})
+
+	sources, err := storage.GetAllSources()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(sources) != 2 {
+		t.Fatalf("expected 2 sources, got %d", len(sources))
+	}
+
+	if sources[0].ID != "1" || sources[0].Name != "Seven" {
+		t.Errorf("expected first source ID=1, Name=Seven, got ID=%s, Name=%s", sources[0].ID, sources[0].Name)
+	}
+}
+
+func TestGetSourceById(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n1,Seven,http://vk.com/seven\n2,Matrix,http://vk.com/matrix\n",
+		"rooms.csv":   "id,source_id\n1,1\n",
+	})
+
+	t.Run("found", func(t *testing.T) {
+		s, err := storage.GetSourceById("2")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if s.Name != "Matrix" {
+			t.Errorf("expected Matrix, got %s", s.Name)
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		_, err := storage.GetSourceById("999")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
+func TestGetGlobalRoom(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,source_id\n1,5\n",
+	})
+
+	room, err := storage.GetGlobalRoom()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if room.ID != "1" {
+		t.Errorf("expected room ID=1, got %s", room.ID)
+	}
+	if room.SourceID != "5" {
+		t.Errorf("expected SourceID=5, got %s", room.SourceID)
+	}
+}
+
+func TestGetGlobalRoom_NotFound(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,source_id\n",
+	})
+
+	_, err := storage.GetGlobalRoom()
+	if err == nil {
+		t.Fatal("expected error for empty rooms, got nil")
+	}
+}
+
+func TestGetRoomByID(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"rooms.csv": "id,source_id\n1,5\n2,10\n",
+	})
+
+	t.Run("found", func(t *testing.T) {
+		r, err := storage.GetRoomByID("2")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if r.SourceID != "10" {
+			t.Errorf("expected SourceID=10, got %s", r.SourceID)
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		_, err := storage.GetRoomByID("999")
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
+func TestUpdateGlobalRoomSource(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,source_id\n1,5\n",
+	})
+
+	id, err := storage.UpdateGlobalRoomSource("99")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "99" {
+		t.Errorf("expected returned id=99, got %s", id)
+	}
+
+	// проверяем что файл обновился
+	room, err := storage.GetGlobalRoom()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if room.SourceID != "99" {
+		t.Errorf("expected SourceID=99, got %s", room.SourceID)
+	}
+}

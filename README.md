@@ -18,6 +18,18 @@ go run ./cmd/server
 
 Сервис будет доступен на `http://localhost:8080`.
 
+## Тесты
+
+```bash
+go test ./internal/repo/ -v
+```
+
+Флаг `-v` — подробный вывод, `-count=1` — отключить кеш:
+
+```bash
+go test ./... -v -count=1
+```
+
 ## Запуск через Docker Compose
 
 ```bash

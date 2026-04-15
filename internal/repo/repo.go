@@ -5,26 +5,35 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"w2g/internal/auth"
 	"w2g/internal/room"
 	"w2g/internal/source"
 )
 
 var (
+	globalRoomID = "1"
+
+	usersTable   = "users"
+	sourcesTable = "sources"
+	roomsTable   = "rooms"
+
 	usersUnit = dataUnit{
-		filename: "users.csv",
+		filename: usersTable + ".csv",
 		fields:   []string{"id", "username", "pass_hash"},
 	}
 
 	sourcesUnit = dataUnit{
-		filename: "sources.csv",
+		filename: sourcesTable + ".csv",
 		fields:   []string{"id", "name", "url"},
 	}
 
 	roomsUnit = dataUnit{
-		filename: "rooms.csv",
+		filename: roomsTable + ".csv",
 		fields:   []string{"id", "source_id"},
 	}
 )
@@ -34,9 +43,15 @@ type dataUnit struct {
 	fields   []string
 }
 
+type hasID interface {
+	GetID() string
+}
+
 type csvStorage struct {
 	dataStruct map[string]dataUnit
 	basePath   string
+
+	mu sync.RWMutex
 }
 
 func NewCSVStorage(path string) (*csvStorage, error) {
@@ -44,12 +59,12 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("path %s not exists", path)
 		}
-		return nil, fmt.Errorf("error when init csv storate: %w", err)
+		return nil, fmt.Errorf("when init csv storate: %w", err)
 	}
 
 	files, err := os.ReadDir(path)
 	if err != nil {
-		return nil, fmt.Errorf("error when read dir %s: %w", path, err)
+		return nil, fmt.Errorf("when read dir %s: %w", path, err)
 	}
 
 	var filenames []string
@@ -58,9 +73,9 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 	}
 
 	dataStruct := make(map[string]dataUnit)
-	dataStruct["users"] = usersUnit
-	dataStruct["sources"] = sourcesUnit
-	dataStruct["rooms"] = roomsUnit
+	dataStruct[usersTable] = usersUnit
+	dataStruct[sourcesTable] = sourcesUnit
+	dataStruct[roomsTable] = roomsUnit
 
 	for _, unit := range dataStruct {
 		if slices.Contains(filenames, unit.filename) {
@@ -69,10 +84,12 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 
 		file, err := os.Create(path + unit.filename)
 		if err != nil {
-			return nil, fmt.Errorf("error when creating %s: %w", file, err)
+			return nil, fmt.Errorf("when creating %s: %w", unit.filename, err)
 		}
 
-		file.WriteString(strings.Join(unit.fields, ",") + "\n")
+		if _, err := file.WriteString(strings.Join(unit.fields, ",") + "\n"); err != nil {
+			return nil, fmt.Errorf("when writing to %s: %w", unit.filename, err)
+		}
 
 		file.Close()
 	}
@@ -83,144 +100,168 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 	}, nil
 }
 
-func (s csvStorage) GetUserByUsername(username string) (auth.User, error) {
+func (s *csvStorage) GetUserByUsername(username string) (auth.User, error) {
 	return auth.User{}, nil
 }
 
-func (s csvStorage) GetAllSources() ([]source.Source, error) {
-	filename := s.dataStruct["sources"].filename
+func (s *csvStorage) GetAllSources() ([]source.Source, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	file, err := os.Open(s.basePath + filename)
+	filename := s.dataStruct[sourcesTable].filename
+
+	rows, err := readAllFromFile(s.basePath + filename)
 	if err != nil {
-		return nil, fmt.Errorf("error when open file %s: %w", file, err)
+		return nil, fmt.Errorf("when read file %s: %w", filename, err)
 	}
-	defer file.Close()
 
-	reader := csv.NewReader(file)
-
-	var frames []source.Source
-	rows, err := reader.ReadAll()
+	sources, err := rowsTo[source.Source](rows)
 	if err != nil {
-		return nil, fmt.Errorf("error when read file %s: %w", file, err)
+		return nil, fmt.Errorf("when convert csv rows to frame struct: %w", err)
 	}
 
-	for i, row := range rows {
-		if i == 0 {
-			continue
-		}
-
-		frame := source.Source{
-			ID:   row[0],
-			Name: row[1],
-			Url:  row[2],
-		}
-		frames = append(frames, frame)
-	}
-
-	return frames, nil
+	return sources, nil
 }
 
-func (s csvStorage) GetSourceById(id string) (*source.Source, error) {
-	filename := s.dataStruct["sources"].filename
+func (s *csvStorage) GetSourceById(id string) (*source.Source, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	file, err := os.Open(s.basePath + filename)
-	if err != nil {
-		return nil, fmt.Errorf("error when open file %s: %w", file, err)
-	}
-	defer file.Close()
+	filename := s.dataStruct[sourcesTable].filename
 
-	reader := csv.NewReader(file)
-
-	var sources []source.Source
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("error when read file %s: %w", file, err)
-	}
-
-	for i, row := range rows {
-		if i == 0 {
-			continue
-		}
-
-		source := source.Source{
-			ID:   row[0],
-			Name: row[1],
-			Url:  row[2],
-		}
-		sources = append(sources, source)
-	}
-
-	for _, source := range sources {
-		if source.ID == id {
-			return &source, nil
-		}
-	}
-
-	return nil, fmt.Errorf("source with id %s not found", id)
+	return getByIDFrom[source.Source](id, s.basePath+filename)
 }
 
-func (s csvStorage) GetGlobalRoom() (*room.Room, error) {
-	filename := s.dataStruct["rooms"].filename
+func (s *csvStorage) GetRoomByID(id string) (*room.Room, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
-	file, err := os.Open(s.basePath + filename)
-	if err != nil {
-		return nil, fmt.Errorf("error when open file %s: %w", file, err)
-	}
-	defer file.Close()
+	filename := s.dataStruct[roomsTable].filename
 
-	reader := csv.NewReader(file)
-
-	var rooms []room.Room
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, fmt.Errorf("error when read file %s: %w", file, err)
-	}
-
-	for i, row := range rows {
-		if i == 0 {
-			continue
-		}
-
-		room := room.Room{
-			ID:       row[0],
-			SourceID: row[1],
-		}
-		rooms = append(rooms, room)
-	}
-
-	if len(rooms) == 0 {
-		return nil, fmt.Errorf("empty rooms was returned")
-	}
-
-	return &rooms[0], nil
+	return getByIDFrom[room.Room](id, s.basePath+filename)
 }
 
-func (s csvStorage) UpdateGlobalRoomSource(sourceID string) (string, error) {
-	globalRoom, err := s.GetGlobalRoom()
+func (s *csvStorage) GetGlobalRoom() (*room.Room, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	filename := s.dataStruct[roomsTable].filename
+
+	return getByIDFrom[room.Room](globalRoomID, s.basePath+filename)
+}
+
+func (s *csvStorage) UpdateGlobalRoomSource(sourceID string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[roomsTable].filename
+
+	globalRoom, err := getByIDFrom[room.Room](globalRoomID, s.basePath+filename)
 	if err != nil {
-		return "", fmt.Errorf("error when getting global room: %w", err)
+		return "", fmt.Errorf("when getting global room: %w", err)
 	}
 
 	globalRoom.SourceID = sourceID
 
-	filename := s.dataStruct["rooms"].filename
-
 	file, err := os.Create(s.basePath + filename)
 	if err != nil {
-		return "", fmt.Errorf("error when open file %s: %w", filename, err)
+		return "", fmt.Errorf("when open file %s: %w", filename, err)
 	}
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	if err := writer.Write(s.dataStruct["rooms"].fields); err != nil {
-		return "", fmt.Errorf("error when writing header: %w", err)
+	if err := writer.Write(s.dataStruct[roomsTable].fields); err != nil {
+		return "", fmt.Errorf("when writing header: %w", err)
 	}
 
 	if err := writer.Write([]string{globalRoom.ID, globalRoom.SourceID}); err != nil {
-		return "", fmt.Errorf("error when writing row: %w", err)
+		return "", fmt.Errorf("when writing row: %w", err)
 	}
 
 	return sourceID, nil
+}
+
+func readAllFromFile(path string) ([][]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("when open file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	return csv.NewReader(file).ReadAll()
+}
+
+func rowsTo[T any](rows [][]string) ([]T, error) {
+	var res []T
+
+	rt := reflect.TypeOf((*T)(nil)).Elem()
+
+	for i, row := range rows {
+		if i == 0 {
+			continue
+		}
+
+		val := reflect.New(rt).Elem().Interface().(T)
+		v := reflect.ValueOf(&val).Elem()
+
+		for i := 0; i < rt.NumField() && i < len(row); i++ {
+			field := rt.Field(i)
+
+			if field.Anonymous {
+				continue
+			}
+
+			f := v.Field(i)
+			if !f.CanSet() {
+				continue
+			}
+
+			switch f.Kind() {
+			case reflect.String:
+				f.SetString(row[i])
+			case reflect.Int, reflect.Int64:
+				num, err := strconv.ParseInt(row[i], 10, 64)
+				if err != nil {
+					return nil, err
+				}
+
+				f.SetInt(num)
+			case reflect.Float64:
+				num, err := strconv.ParseFloat(row[i], 64)
+				if err != nil {
+					return nil, err
+				}
+
+				f.SetFloat(num)
+
+			}
+
+		}
+
+		res = append(res, val)
+	}
+
+	return res, nil
+}
+
+func getByIDFrom[T hasID](id, path string) (*T, error) {
+	rows, err := readAllFromFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("when read file %s: %w", path, err)
+	}
+
+	items, err := rowsTo[T](rows)
+	if err != nil {
+		return nil, fmt.Errorf("when convert csv rows to struct: %w", err)
+	}
+
+	for i := range items {
+		if items[i].GetID() == id {
+			return &items[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("item with id %s not found", id)
 }
