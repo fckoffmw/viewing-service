@@ -76,7 +76,7 @@ func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
 func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 4 || parts[1] != "api" || parts[2] != "room" || parts[3] != "source" {
-		h.log.Error("when validating req path %s given but /api/room/source expected", r.URL.Path)
+		h.log.Error("invalid req path", "path", r.URL.Path)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
 			Message: "invalid req path",
@@ -86,7 +86,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("when reading req body: %v", err)
+		h.log.Error("when reading req body", "err", err)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
 			Message: "cannot read req body",

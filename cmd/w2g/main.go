@@ -82,7 +82,7 @@ func main() {
 
 	log.Info("w2g server listening", "port", addr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error("error", err)
+		log.Error("server error", "err", err)
 	}
 }
 

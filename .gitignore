@@ -40,7 +40,6 @@ temp/
 
 /storage/
 /.qwen/
-prompts.md
 TODO.md
 
 /web/profile-v2.css

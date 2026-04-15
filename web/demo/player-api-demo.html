@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VK Video Player API Demo</title>
+    <script src="https://vk.ru/js/api/videoplayer.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            font-size: 24px;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+
+        .player-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .player-wrapper {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* 16:9 */
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .player-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: #2a2a2a;
+            color: #fff;
+            border: 1px solid #333;
+            padding: 12px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .control-btn:hover {
+            background: #333;
+            border-color: #4a9eff;
+        }
+
+        .control-btn:active {
+            transform: scale(0.98);
+        }
+
+        .control-btn.primary {
+            background: #4a9eff;
+            border-color: #4a9eff;
+        }
+
+        .control-btn.primary:hover {
+            background: #3a8eef;
+        }
+
+        .control-btn.danger {
+            background: #ff4a4a;
+            border-color: #ff4a4a;
+        }
+
+        .control-btn.danger:hover {
+            background: #ef3a3a;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #999;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .control-group input[type="number"] {
+            width: 100%;
+            background: #2a2a2a;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .seek-input {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .seek-input input {
+            flex: 1;
+        }
+
+        .seek-input button {
+            white-space: nowrap;
+        }
+
+        .info-panel {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .info-panel h2 {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        .info-item {
+            background: #2a2a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .info-item .label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+
+        .info-item .value {
+            font-size: 16px;
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .info-item .value.state-playing {
+            color: #4aff4a;
+        }
+
+        .info-item .value.state-paused {
+            color: #ffaa4a;
+        }
+
+        .info-item .value.state-stopped {
+            color: #ff4a4a;
+        }
+
+        .event-log {
+            margin-top: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .event-log h3 {
+            font-size: 14px;
+            margin-bottom: 10px;
+            color: #999;
+        }
+
+        .event-log .log-entry {
+            font-size: 12px;
+            padding: 4px 0;
+            border-bottom: 1px solid #333;
+            color: #ccc;
+        }
+
+        .event-log .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .event-log .log-time {
+            color: #4a9eff;
+            font-weight: 500;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎬 VK Video Player API Demo</h1>
+        
+        <div class="main-layout">
+            <div class="player-section">
+                <div class="player-wrapper">
+                    <iframe 
+                        id="video-player"
+                        src="https://vk.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab896c93b2&hd=4&js_api=1" 
+                        width="1920" 
+                        height="1080" 
+                        allow="autoplay; encrypted-media; fullscreen; picture-in-picture; screen-wake-lock;" 
+                        frameborder="0" 
+                        allowfullscreen>
+                    </iframe>
+                </div>
+
+                <div class="controls">
+                    <button class="control-btn primary" onclick="playVideo()">
+                        ▶ Play
+                    </button>
+                    <button class="control-btn" onclick="pauseVideo()">
+                        ⏸ Pause
+                    </button>
+                    <button class="control-btn" onclick="toggleMute()">
+                        <span id="mute-icon">🔊</span> <span id="mute-text">Mute</span>
+                    </button>
+                    <button class="control-btn" onclick="updateInfo()">
+                        📊 Refresh Info
+                    </button>
+                    <button class="control-btn danger" onclick="destroyPlayer()">
+                        🗑 Destroy
+                    </button>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <div class="control-group">
+                        <label>Seek to time (seconds): <span id="seek-value">0</span>s</label>
+                        <div class="seek-input">
+                            <input type="number" id="seek-time" min="0" value="0" step="1">
+                            <button class="control-btn" onclick="seekVideo()">⏩ Seek</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label>Volume: <span id="volume-value">100</span>%</label>
+                        <input type="range" id="volume-slider" min="0" max="100" value="100" oninput="updateVolumeLabel(this.value)">
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h2>📋 Player State</h2>
+                
+                <div class="info-item">
+                    <div class="label">State</div>
+                    <div class="value" id="info-state">uninited</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="label">Current Time</div>
+                    <div class="value" id="info-time">0s</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="label">Duration</div>
+                    <div class="value" id="info-duration">0s</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="label">Volume</div>
+                    <div class="value" id="info-volume">1.00</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="label">Muted</div>
+                    <div class="value" id="info-muted">false</div>
+                </div>
+
+                <div class="info-item">
+                    <div class="label">Quality</div>
+                    <div class="value" id="info-quality">-</div>
+                </div>
+
+                <div class="event-log">
+                    <h3>📝 Event Log</h3>
+                    <div id="event-log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let player = null;
+        const iframe = document.getElementById('video-player');
+
+        // Initialize player after page load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                player = VK.VideoPlayer(iframe);
+                logEvent('Player initialized');
+                setupEventHandlers();
+                updateInfo();
+            }, 1000);
+        });
+
+        // Setup event handlers
+        function setupEventHandlers() {
+            if (!player) return;
+
+            player.on('inited', () => logEvent('inited'));
+            player.on('started', () => logEvent('started'));
+            player.on('resumed', () => logEvent('resumed'));
+            player.on('paused', () => logEvent('paused'));
+            player.on('ended', () => logEvent('ended'));
+            player.on('error', () => logEvent('error'));
+            
+            player.on('timeupdate', () => {
+                updateInfo();
+            });
+
+            player.on('volumechange', () => {
+                updateVolumeInfo();
+                updateMuteInfo();
+            });
+
+            player.on('qualitychange', () => {
+                updateQualityInfo();
+            });
+        }
+
+        // Play video
+        function playVideo() {
+            if (!player) return alert('Player not initialized');
+            player.play();
+            logEvent('play() called');
+        }
+
+        // Pause video
+        function pauseVideo() {
+            if (!player) return alert('Player not initialized');
+            player.pause();
+            logEvent('pause() called');
+        }
+
+        // Seek to time
+        function seekVideo() {
+            if (!player) return alert('Player not initialized');
+            const time = parseInt(document.getElementById('seek-time').value);
+            if (isNaN(time) || time < 0) return alert('Invalid time value');
+            player.seek(time);
+            logEvent(`seek(${time}s) called`);
+        }
+
+        // Update volume
+        function updateVolume() {
+            if (!player) return alert('Player not initialized');
+            const volume = parseInt(document.getElementById('volume-slider').value) / 100;
+            player.setVolume(volume);
+            logEvent(`setVolume(${volume.toFixed(2)}) called`);
+        }
+
+        // Update volume label
+        function updateVolumeLabel(value) {
+            document.getElementById('volume-value').textContent = value;
+            updateVolume();
+        }
+
+        // Toggle mute
+        function toggleMute() {
+            if (!player) return alert('Player not initialized');
+            const isMuted = player.isMuted();
+            if (isMuted) {
+                player.unmute();
+                logEvent('unmute() called');
+            } else {
+                player.mute();
+                logEvent('mute() called');
+            }
+        }
+
+        // Update player info
+        function updateInfo() {
+            if (!player) return;
+
+            try {
+                const state = player.getState();
+                updateStateInfo(state);
+                updateTimeInfo();
+                updateDurationInfo();
+                updateVolumeInfo();
+                updateMuteInfo();
+                updateQualityInfo();
+            } catch (e) {
+                console.error('Error updating info:', e);
+            }
+        }
+
+        function updateStateInfo(state) {
+            const el = document.getElementById('info-state');
+            el.textContent = state;
+            el.className = 'value';
+            if (state === 'playing') el.classList.add('state-playing');
+            else if (state === 'paused') el.classList.add('state-paused');
+            else if (state === 'ended' || state === 'error') el.classList.add('state-stopped');
+        }
+
+        function updateTimeInfo() {
+            try {
+                const time = player.getCurrentTime();
+                document.getElementById('info-time').textContent = formatTime(time);
+            } catch (e) {}
+        }
+
+        function updateDurationInfo() {
+            try {
+                const duration = player.getDuration();
+                document.getElementById('info-duration').textContent = formatTime(duration);
+            } catch (e) {}
+        }
+
+        function updateVolumeInfo() {
+            if (!player) return;
+            try {
+                const volume = player.getVolume();
+                document.getElementById('info-volume').textContent = volume.toFixed(2);
+            } catch (e) {}
+        }
+
+        function updateMuteInfo() {
+            if (!player) return;
+            try {
+                const muted = player.isMuted();
+                document.getElementById('info-muted').textContent = muted.toString();
+                document.getElementById('mute-icon').textContent = muted ? '🔇' : '🔊';
+                document.getElementById('mute-text').textContent = muted ? 'Unmute' : 'Mute';
+            } catch (e) {}
+        }
+
+        function updateQualityInfo() {
+            if (!player) return;
+            try {
+                const quality = player.getQuality();
+                document.getElementById('info-quality').textContent = quality || '-';
+            } catch (e) {}
+        }
+
+        // Destroy player
+        function destroyPlayer() {
+            if (!player) return alert('Player not initialized');
+            player.destroy();
+            logEvent('Player destroyed');
+            player = null;
+        }
+
+        // Format time (seconds to hh:mm:ss)
+        function formatTime(seconds) {
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) {
+                return `${h}h ${m}m ${s}s`;
+            }
+            return `${m}m ${s}s`;
+        }
+
+        // Log event
+        function logEvent(message) {
+            const log = document.getElementById('event-log');
+            const time = new Date().toLocaleTimeString('ru-RU');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+            log.insertBefore(entry, log.firstChild);
+
+            // Keep only last 50 entries
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Update seek value display
+        document.getElementById('seek-time').addEventListener('input', function() {
+            document.getElementById('seek-value').textContent = this.value;
+        });
+    </script>
+</body>
+</html>

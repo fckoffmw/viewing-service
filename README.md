@@ -2,48 +2,46 @@
 
 Минимальный сервис совместного просмотра VK Video с чатом на Go.
 
-## Что есть в MVP
+## Документация
 
-- Один общий рум без регистрации.
-- Iframe-плеер VK Video.
-- Реалтайм-чат для двух участников через WebSocket.
-- Имена в чате: `Me` и `NotMe`.
+| Файл | Описание |
+|------|----------|
+| [docs/spec.md](docs/spec.md) | Спецификация проекта |
+| [docs/arch.md](docs/arch.md) | Архитектура |
+| [docs/run.md](docs/run.md) | Запуск, проверка, остановка |
+| [docs/api.md](docs/api.md) | REST API endpoints |
+| [docs/vk-iframe-api.md](docs/vk-iframe-api.md) | VK Video iframe JavaScript API |
+| [docs/tasks.md](docs/tasks.md) | TODO и выполненные задачи |
 
-## Локальный запуск без Docker
+## Текущее состояние
 
-```bash
-go mod tidy
-go run ./cmd/server
-```
+**MVP завершён.** Сервис работает в режиме: одна общая комната, чат на двоих через WebSocket, выбор видео из каталога. Регистрация и авторизация — не реализованы.
 
-Сервис будет доступен на `http://localhost:8080`.
+## Release Notes
 
-## Тесты
+| Commit | Описание |
+|--------|----------|
+| `087d2c3` | Repo layer refactoring, добавлены тесты, thread safety |
+| `92decc0` | CSS для profile page, тестовый контент |
+| `b99e16f` | Исправлен .gitignore: web директория доступна |
+| `934cea5` | Storage вынесен из Docker image на host |
+| `63ae4bf` | Content selection feature, обновлено API |
+| `1f7cf9a` | Добавлена сущность Room, endpoints `/api/room`, `/api/sources` |
+| `59d40b7` | Room API: getAll sources |
+| `fd91005` | CSS для sidebar |
+| `9c37597` | Profile page: user info, секции (watch later, reviews, history) |
+| `2cba0e2` | Разделение на handler/service/repo слои |
+| `682d047` | Базовый CSS |
+| `34903a2` | Начата работа над profile page |
+| `6d4c864` | Обновлены требования к проекту |
+| `8ad2fde` | Initial backend |
 
-```bash
-go test ./internal/repo/ -v
-```
-
-Флаг `-v` — подробный вывод, `-count=1` — отключить кеш:
-
-```bash
-go test ./... -v -count=1
-```
-
-## Запуск через Docker Compose
-
-```bash
-docker compose up -d --build
-```
-
-Проверка:
-
-```bash
-curl http://localhost:8080/healthz
-```
-
-Остановка:
+## Быстрый старт
 
 ```bash
-docker compose down
+go run ./cmd/w2g
 ```
+
+Сервис доступен на `http://localhost:8080`
+
+Полные инструкции — в [docs/run.md](docs/run.md)
