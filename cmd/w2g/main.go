@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
+	"strings"
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
+	"w2g/internal/config"
 	"w2g/internal/middleware"
 	"w2g/internal/repo"
 	"w2g/internal/room"
@@ -17,21 +18,18 @@ import (
 
 var log *slog.Logger
 
-func init() {
-	log = slog.New(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		}),
-	)
-}
-
 func main() {
-	addr := ":" + getEnv("PORT", "8080")
 
-	hub := chat.NewHub(2)
+	config := config.Load()
+
+	addr := ":" + config.Port
+
+	hub := chat.NewHub(config.MaxClients)
 	go hub.Run()
 
-	csvStorage, err := repo.NewCSVStorage("./storage/")
+	initLogger(config.LogLevel)
+
+	csvStorage, err := repo.NewCSVStorage(config.StorageDir)
 	if err != nil {
 		log.Error("when creating csv storage", "error", err)
 		os.Exit(1)
@@ -89,15 +87,22 @@ func main() {
 	}
 }
 
-func getEnv(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return fallback
+func initLogger(level string) {
+	var levelValue slog.Level
+	switch strings.ToLower(level) {
+	case "info":
+		levelValue = slog.LevelInfo
+	case "warn":
+		levelValue = slog.LevelWarn
+	case "error":
+		levelValue = slog.LevelError
+	default:
+		levelValue = slog.LevelDebug
 	}
-	if key == "PORT" {
-		if _, err := strconv.Atoi(value); err != nil {
-			return fallback
-		}
-	}
-	return value
+
+	log = slog.New(
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: levelValue,
+		}),
+	)
 }
