@@ -1,4 +1,4 @@
-# w2g: запуск
+# Запуск
 
 ## Локальный запуск
 
@@ -13,8 +13,6 @@ go run ./cmd/w2g
 ```bash
 docker compose up -d --build
 ```
-
-Сервис доступен на `http://<SERVER_IP>:8080`
 
 ## Проверка
 
@@ -44,12 +42,20 @@ Go run: `Ctrl+C`
 
 ## Тесты
 
-```bash
-go test ./internal/repo/ -v
-```
-
-Все пакеты:
+Все пакеты (кроме auth):
 
 ```bash
-go test ./... -v -count=1
+go test ./internal/source/... ./internal/room/... ./internal/chat/... -v -count=1
 ```
+
+Тесты repo:
+
+```bash
+go test ./internal/repo/... -v
+```
+
+## Переменные окружения
+
+| Переменная | По умолчанию | Описание |
+|------------|--------------|-----------|
+| `PORT` | `8080` | Порт сервера |

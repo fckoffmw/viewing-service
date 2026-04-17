@@ -13,7 +13,7 @@
   {
     "id": "1",
     "name": "Семь (1995)",
-    "url": "https://vk.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
+    "url": "https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
   }
 ]
 ```
@@ -33,7 +33,7 @@
   "current_source": {
     "id": "1",
     "name": "Семь (1995)",
-    "url": "https://vk.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
+    "url": "https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
   }
 }
 ```
@@ -74,6 +74,12 @@
   "message": "some error message"
 }
 ```
+
+## Заголовки ответа
+
+### `X-Request-ID`
+
+Идентификатор запроса (8 символов UUID). Используется для трейсинга.
 
 ## WebSocket
 

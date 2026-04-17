@@ -2,7 +2,7 @@ package chat
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -37,10 +37,10 @@ type chatMessage struct {
 	Text     string `json:"text"`
 }
 
-func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func ServeWS(log *slog.Logger, hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Printf("upgrade error: %v", err)
+		log.Error("upgrade", "err", err)
 		return
 	}
 

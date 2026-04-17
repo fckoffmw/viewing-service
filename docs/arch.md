@@ -3,22 +3,31 @@
 ## Обзор
 
 ```
-cmd/w2g/main.go ──→ HTTP Server ──→ http.ServeMux ──→ Routes
-                                              │
-                                              ├── Static (web/)
-                                              ├── WebSocket (/ws) ──→ chat.Hub
-                                              └── API (/api/*) ──→ Handlers
+cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ http.ServeMux ──→ Routes
+                                                                    │
+                                                                    ├── Static (web/)
+                                                                    ├── WebSocket (/ws) ──→ chat.Hub
+                                                                    └── API (/api/*) ──→ Handlers
 ```
 
 ## Пакеты
 
 | Пакет | Назначение |
-|-------|------------|
+|-------|----------|
 | `auth` | Аутентификация (stub) |
 | `chat` | WebSocket: Hub + Client |
+| `middleware` | HTTP middleware (logging) |
 | `repo` | CSV хранилище |
 | `room` | Управление комнатами |
 | `source` | Управление источниками |
+
+## HTTP Middleware
+
+**logging** — логирование запросов:
+- Генерирует `request_id` (8 символов UUID)
+- Добавляет в контекст запроса
+- Добавляет заголовок `X-Request-ID` в ответ
+- Логирует: method, path, status, duration
 
 ## WebSocket чат
 
@@ -44,17 +53,16 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 
 | Метод | Путь | Обработчик |
 |-------|------|------------|
-| `GET` | `/` | Static (web/index.html) |
-| `GET` | `/ws` | WebSocket чат |
-| `GET` | `/healthz` | Health check |
-| `POST` | `/api/login` | auth.Login |
-| `GET` | `/api/sources` | source.GetAllSources |
-| `GET` | `/api/room` | room.GetGlobalRoom |
-| `PATCH` | `/api/room/source` | room.PatchGlobalRoomSource |
+| GET | `/` | Static (web/index.html) |
+| GET | `/ws` | WebSocket чат |
+| GET | `/healthz` | Health check |
+| GET | `/api/sources` | source.GetAllSources |
+| GET | `/api/room` | room.GetGlobalRoom |
+| PATCH | `/api/room/source` | room.PatchGlobalRoomSource |
 
 ## Зависимости
 
 | Модуль | Версия |
 |--------|--------|
 | `gorilla/websocket` | v1.5.3 |
-| `golang.org/x/crypto` | v0.49.0 |
+| `github.com/google/uuid` | v1.6.0 |

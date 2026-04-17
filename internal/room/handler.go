@@ -44,9 +44,11 @@ func writeError(w http.ResponseWriter, code int, resp RoomResponse) {
 }
 
 func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
+	requestID, _ := r.Context().Value("request_id").(string)
+
 	room, err := h.service.GetGlobalRoom()
 	if err != nil {
-		h.log.Error("when getting global room", "err", err)
+		h.log.Error("when getting global room", "request_id", requestID, "err", err)
 
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -60,7 +62,7 @@ func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
 	if room.SourceID != "" {
 		source, err := h.service.GetSourceById(room.SourceID)
 		if err != nil {
-			h.log.Error("when getting source", "err", err, "source_id", room.SourceID)
+			h.log.Error("when getting source", "request_id", requestID, "err", err, "source_id", room.SourceID)
 
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -74,9 +76,11 @@ func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
+	requestID, _ := r.Context().Value("request_id").(string)
+
 	parts := strings.Split(r.URL.Path, "/")
 	if len(parts) != 4 || parts[1] != "api" || parts[2] != "room" || parts[3] != "source" {
-		h.log.Error("invalid req path", "path", r.URL.Path)
+		h.log.Error("invalid req path", "request_id", requestID, "path", r.URL.Path)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
 			Message: "invalid req path",
@@ -86,7 +90,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("when reading req body", "err", err)
+		h.log.Error("when reading req body", "request_id", requestID, "err", err)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
 			Message: "cannot read req body",
@@ -96,7 +100,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if _, err := h.service.GetSourceById(req.SourceID); err != nil {
-		h.log.Error("when getting source with id", "id", req.SourceID, "err", err)
+		h.log.Error("when getting source with id", "request_id", requestID, "id", req.SourceID, "err", err)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
 			Message: "cannot get source with id " + req.SourceID,
@@ -106,14 +110,14 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.service.UpdateGlobalRoomSource(req.SourceID)
 	if err != nil {
-		h.log.Error("when updating global room source", "err", err)
+		h.log.Error("when updating global room source", "request_id", requestID, "err", err)
 
 		writeError(w, http.StatusInternalServerError, RoomResponse{
 			Message: "cannot update global room source",
 		})
 		return
 	}
-	h.log.Info("successfuly updated global room source", "id", id)
+	h.log.Info("successfuly updated global room source", "request_id", requestID, "id", id)
 
 	resp := RoomResponse{
 		ID:      id,

@@ -9,6 +9,7 @@ import (
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
+	"w2g/internal/middleware"
 	"w2g/internal/repo"
 	"w2g/internal/room"
 	"w2g/internal/source"
@@ -50,7 +51,7 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir("web")))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		chat.ServeWS(hub, w, r)
+		chat.ServeWS(log, hub, w, r)
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -75,9 +76,11 @@ func main() {
 		log.Error("web/index.html not found", "error", err)
 	}
 
+	wrappedMux := middleware.Logging(log, mux)
+
 	server := &http.Server{
 		Addr:    addr,
-		Handler: mux,
+		Handler: wrappedMux,
 	}
 
 	log.Info("w2g server listening", "port", addr)
