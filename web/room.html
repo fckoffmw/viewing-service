@@ -7,20 +7,29 @@
         <link rel="stylesheet" href="/static/room.css">
     </head>
     <body>
-        <div class="room-page">
+        <header>
             <nav class ="room-nav">
                 <a href="/content.html" class="content-link">← К контенту</a>
-                <a href="/profile.html" class="profile-link">Мой профиль</a>
+                <a href="/profile.html" class="profile-link"><img src="static/profile_card.jpg" alt="avatar"></a>
             </nav>
+        </header>
+        <div class="room-layout">
+            <main>
+                <div id="player-container">
+                   <p id="player-placeholder">Загрузка...</p>
+                   <iframe id="player-frame" width="100%" height="100%" frameborder="0" allowfullscreen></iframe> 
+                </div>
+            </main>
             <aside>
                 <div class="chat">
-                    <div id="chat-message"></div>
-                    
+                    <div id="chat-messages"></div>
+                    <form id="chat-form">
+                        <input type="text" id="chat-input" placeholder="Сообщение..." maxlength="500" autocomplete="off">
+                        <button type="submit">→</button>
+                    </form>
                 </div>
             </aside>
-            <main>
-                
-            </main>
         </div>
+        
     </body>
 </html>
