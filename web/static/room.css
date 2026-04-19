@@ -117,3 +117,42 @@ body {
 #chat-form button:hover {
   background: #3a3a3a;
 }
+
+@media (max-width: 767px) {
+  body {
+    overflow: hidden;
+  }
+
+  .layout {
+    flex-direction: column;
+  }
+
+  .player {
+    flex: 0 0 40%;
+    padding: 8px;
+  }
+
+  .back-link {
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+  }
+
+  #player-container {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .chat {
+    width: 100%;
+    flex: 1;
+    min-height: 100px;
+    border-left: none;
+    border-top: 1px solid #333;
+  }
+
+  #chat-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}

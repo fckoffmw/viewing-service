@@ -4,11 +4,12 @@
 
 ### TODO
 
-- [] config
+- [] auth
 - [] workflow
 
 ### DONE
 
+- [x] config
 - [x] logging
 - [x] CSV storage layer с тестами
 - [x] Room entity + API (`/api/room`, `/api/room/source`)
