@@ -42,16 +42,8 @@ Go run: `Ctrl+C`
 
 ## Тесты
 
-Все пакеты (кроме auth):
-
 ```bash
-go test ./internal/source/... ./internal/room/... ./internal/chat/... -v -count=1
-```
-
-Тесты repo:
-
-```bash
-go test ./internal/repo/... -v
+go test ./internal/... -v -count=1
 ```
 
 ## Переменные окружения
@@ -59,3 +51,7 @@ go test ./internal/repo/... -v
 | Переменная | По умолчанию | Описание |
 |------------|--------------|-----------|
 | `PORT` | `8080` | Порт сервера |
+| `STORAGE_DIR` | `./storage/` | Директория CSV-файлов |
+| `LOG_LEVEL` | `debug` | Уровень логирования (`debug`, `info`, `warn`, `error`) |
+
+`MaxClients` захардкожен в `2` (ограничение чата).
