@@ -29,6 +29,13 @@ func main() {
 
 	initLogger(config.LogLevel)
 
+	log.Info("config",
+		"STORAGE_DIR", config.StorageDir,
+		"PORT", config.Port,
+		"MAX_CLIENTS", config.MaxClients,
+		"LOG_LEVEL", config.LogLevel,
+	)
+
 	csvStorage, err := repo.NewCSVStorage(config.StorageDir)
 	if err != nil {
 		log.Error("when creating csv storage", "error", err)

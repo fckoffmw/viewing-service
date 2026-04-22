@@ -18,5 +18,6 @@ COPY web /app/web
 EXPOSE 8080
 
 ENV PORT=8080
+ENV STORAGE_DIR=/app/storage
 
 CMD ["/app/w2g"]

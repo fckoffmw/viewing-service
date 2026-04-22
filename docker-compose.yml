@@ -4,8 +4,8 @@ services:
     container_name: w2g
     ports:
       - "8080:8080"
-    environment:
-      - PORT=8080
+    env_file:
+      - .env
     restart: unless-stopped
     volumes:
-      - ./storage:/app/storage
+      - ${STORAGE_DIR:-./storage}:/app/storage
