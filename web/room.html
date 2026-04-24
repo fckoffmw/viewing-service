@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>w2g — Комната</title>
+  <script src="https://vk.ru/js/api/videoplayer.js"></script>
   <link rel="stylesheet" href="/static/room.css">
 </head>
 <body>
@@ -26,6 +27,60 @@
 
   <script>
     // --- player ---
+    var player = null;
+    var isLocalEvent = false;
+
+    function initPlayer() {
+      var frame = document.getElementById("player-frame");
+      player = VK.VideoPlayer(frame);
+
+      player.on("inited", function() {
+        appendMessage("system", "Плеер инициализирован");
+      });
+
+      player.on("play", function() {
+        if (isLocalEvent) return;
+        sendSync({ type: "play", time: player.getCurrentTime() });
+      });
+
+      player.on("pause", function() {
+        if (isLocalEvent) return;
+        sendSync({ type: "pause", time: player.getCurrentTime() });
+      });
+
+      player.on("timeupdate", function() {
+        if (isLocalEvent) return;
+        sendSync({ type: "timeupdate", time: player.getCurrentTime() });
+      });
+    }
+
+    function handleSync(data) {
+      if (data.clientId === clientId) return;
+
+      isLocalEvent = true;
+      try {
+        if (data.type === "play") {
+          player.seek(data.time);
+          player.play();
+        } else if (data.type === "pause") {
+          player.seek(data.time);
+          player.pause();
+        } else if (data.type === "seek" || data.type === "timeupdate") {
+          player.seek(data.time);
+        }
+      } finally {
+        isLocalEvent = false;
+      }
+    }
+
+    function sendSync(event) {
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({
+        type: "video_sync",
+        payload: event
+      }));
+    }
+
     async function loadPlayer() {
       try {
         const res = await fetch("/api/room");
@@ -36,9 +91,17 @@
         const room = await res.json();
         if (room.current_source && room.current_source.url) {
           var frame = document.getElementById("player-frame");
-          frame.src = room.current_source.url;
+          var url = room.current_source.url;
+          if (url.indexOf('js_api=1') === -1) {
+            url += (url.indexOf('?') === -1 ? '?' : '&') + 'js_api=1';
+          }
+          frame.src = url;
           frame.style.display = "block";
           document.getElementById("player-placeholder").style.display = "none";
+
+          frame.onload = function() {
+            initPlayer();
+          };
         } else {
           document.getElementById("player-placeholder").textContent = "Источник не выбран. Выберите на странице контента.";
         }
@@ -64,6 +127,10 @@
 
       ws.onmessage = function(e) {
         var data = JSON.parse(e.data);
+        if (data.sync) {
+          handleSync(data.sync);
+          return;
+        }
         appendMessage(data.clientId === clientId ? "me" : "other", data.text);
       };
 
@@ -90,7 +157,11 @@
       e.preventDefault();
       var text = input.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ clientId: clientId, text: text }));
+      ws.send(JSON.stringify({
+        type: "chat_message",
+        clientId: clientId,
+        payload: { clientId: clientId, text: text }
+      }));
       input.value = "";
     });
 

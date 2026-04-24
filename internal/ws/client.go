@@ -1,4 +1,4 @@
-package chat
+package ws
 
 import (
 	"encoding/json"
@@ -26,31 +26,56 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type BroadcasterHub interface {
+	Broadcast() chan []byte
+}
+
+type Server struct {
+	Log *slog.Logger
+}
+
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
-	send chan []byte
+	Send chan []byte
+}
+
+type Event struct {
+	Type    string          `json:"type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 type chatMessage struct {
-	ClientID string `json:"clientId"`
+	ClientID string `json:"clientId,omitempty"`
 	Text     string `json:"text"`
 }
 
-func ServeWS(log *slog.Logger, hub *Hub, w http.ResponseWriter, r *http.Request) {
+type syncEvent struct {
+	Type string  `json:"type"`
+	Time float64 `json:"time"`
+}
+
+func NewServer(log *slog.Logger) *Server {
+	return &Server{
+		Log: log,
+	}
+}
+
+func (s *Server) ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Error("upgrade", "err", err)
+		s.Log.Error("ws upgrade", "err", err)
 		return
 	}
 
 	client := &Client{
 		hub:  hub,
 		conn: conn,
-		send: make(chan []byte, 64),
+		Send: make(chan []byte, 64),
 	}
+
 	accepted := make(chan bool, 1)
-	client.hub.register <- registerRequest{client: client, accepted: accepted}
+	hub.register <- registerRequest{client: client, accepted: accepted}
 	if !<-accepted {
 		_ = conn.WriteControl(
 			websocket.CloseMessage,
@@ -61,14 +86,16 @@ func ServeWS(log *slog.Logger, hub *Hub, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	go client.writePump()
-	go client.readPump()
+	s.Log.Debug("ws client connected", "clients", len(hub.clients))
+	go client.writePump(s.Log)
+	go client.readPump(s)
 }
 
-func (c *Client) readPump() {
+func (c *Client) readPump(s *Server) {
 	defer func() {
 		c.hub.unregister <- c
 		_ = c.conn.Close()
+		s.Log.Debug("ws client disconnected", "clients", len(c.hub.clients))
 	}()
 
 	c.conn.SetReadLimit(maxMessageSize)
@@ -84,24 +111,41 @@ func (c *Client) readPump() {
 			break
 		}
 
-		var payload chatMessage
-		if err := json.Unmarshal(message, &payload); err != nil {
+		var event Event
+		if err := json.Unmarshal(message, &event); err != nil {
 			continue
 		}
 
-		payload.Text = strings.TrimSpace(payload.Text)
-		if payload.Text == "" || len(payload.Text) > maxTextLen {
-			continue
+		switch event.Type {
+		case "chat_message":
+			var payload chatMessage
+			if err := json.Unmarshal(event.Payload, &payload); err != nil {
+				continue
+			}
+			payload.Text = strings.TrimSpace(payload.Text)
+			if payload.Text == "" || len(payload.Text) > maxTextLen {
+				continue
+			}
+			normalized, err := json.Marshal(payload)
+			if err != nil {
+				continue
+			}
+
+			s.Log.Debug("ws chat message", "clientId", payload.ClientID, "text", payload.Text)
+			c.hub.broadcast <- normalized
+
+		case "video_sync":
+			var payload syncEvent
+			if err := json.Unmarshal(event.Payload, &payload); err != nil {
+				continue
+			}
+			s.Log.Debug("ws sync event", "type", payload.Type, "time", payload.Time)
+			c.hub.broadcast <- message
 		}
-		normalized, err := json.Marshal(payload)
-		if err != nil {
-			continue
-		}
-		c.hub.broadcast <- normalized
 	}
 }
 
-func (c *Client) writePump() {
+func (c *Client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -110,7 +154,7 @@ func (c *Client) writePump() {
 
 	for {
 		select {
-		case message, ok := <-c.send:
+		case message, ok := <-c.Send:
 			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})

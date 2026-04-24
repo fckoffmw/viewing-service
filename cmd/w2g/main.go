@@ -8,12 +8,12 @@ import (
 	"strings"
 
 	"w2g/internal/auth"
-	"w2g/internal/chat"
 	"w2g/internal/config"
 	"w2g/internal/middleware"
 	"w2g/internal/repo"
 	"w2g/internal/room"
 	"w2g/internal/source"
+	"w2g/internal/ws"
 )
 
 var log *slog.Logger
@@ -22,12 +22,14 @@ func main() {
 
 	config := config.Load()
 
+	initLogger(config.LogLevel)
+
 	addr := ":" + config.Port
 
-	hub := chat.NewHub(config.MaxClients)
-	go hub.Run()
+	wsHub := ws.NewHub(config.MaxClients, log)
+	go wsHub.Run()
 
-	initLogger(config.LogLevel)
+	server := ws.NewServer(log)
 
 	log.Info("config",
 		"STORAGE_DIR", config.StorageDir,
@@ -56,8 +58,9 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir("web")))
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		chat.ServeWS(log, hub, w, r)
+		server.ServeWS(wsHub, w, r)
 	})
+
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -83,13 +86,13 @@ func main() {
 
 	wrappedMux := middleware.Logging(log, mux)
 
-	server := &http.Server{
+	httpServer := &http.Server{
 		Addr:    addr,
 		Handler: wrappedMux,
 	}
 
 	log.Info("w2g server listening", "port", addr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error("server error", "err", err)
 	}
 }

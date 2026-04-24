@@ -1,4 +1,4 @@
-package chat
+package sync
 
 import (
 	"log/slog"
@@ -42,15 +42,15 @@ func (h *Hub) Run() {
 			client := req.client
 			h.clients[client] = struct{}{}
 			req.accepted <- true
-			h.Log.Debug("chat client registered", "clients", len(h.clients))
+			h.Log.Debug("sync client registered", "clients", len(h.clients))
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send)
 			}
-			h.Log.Debug("chat client unregistered", "clients", len(h.clients))
+			h.Log.Debug("sync client unregistered", "clients", len(h.clients))
 		case msg := <-h.Ch:
-			h.Log.Debug("chat broadcast", "clients", len(h.clients), "msgLen", len(msg))
+			h.Log.Debug("sync broadcast", "clients", len(h.clients), "msgLen", len(msg))
 			for client := range h.clients {
 				select {
 				case client.Send <- msg:
