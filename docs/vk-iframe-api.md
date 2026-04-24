@@ -32,14 +32,14 @@
 ### Шаг 1. Подключите скрипт
 
 ```html
-<script src="https://vk.ru/js/api/videoplayer.js"></script>
+<script src="https://vk.com/js/api/videoplayer.js"></script>
 ```
 
 ### Шаг 2. Добавьте `js_api=1` в URL iframe
 
 ```html
 <iframe 
-    src="https://vk.ru/video_ext.php?oid=-22822305&id=456241864&hd=2&js_api=1" 
+    src="https://vk.com/video_ext.php?oid=-22822305&id=456241864&hd=2&js_api=1" 
     width="853" 
     height="480" 
     allow="autoplay; encrypted-media; fullscreen; picture-in-picture;" 

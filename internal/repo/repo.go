@@ -41,6 +41,7 @@ var (
 type dataUnit struct {
 	filename string
 	fields   []string
+	lastID   int
 }
 
 type hasID interface {
@@ -48,7 +49,7 @@ type hasID interface {
 }
 
 type csvStorage struct {
-	dataStruct map[string]dataUnit
+	dataStruct map[string]*dataUnit
 	basePath   string
 
 	mu sync.RWMutex
@@ -72,13 +73,19 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 		filenames = append(filenames, file.Name())
 	}
 
-	dataStruct := make(map[string]dataUnit)
-	dataStruct[usersTable] = usersUnit
-	dataStruct[sourcesTable] = sourcesUnit
-	dataStruct[roomsTable] = roomsUnit
+	dataStruct := make(map[string]*dataUnit)
+	dataStruct[usersTable] = &usersUnit
+	dataStruct[sourcesTable] = &sourcesUnit
+	dataStruct[roomsTable] = &roomsUnit
 
 	for _, unit := range dataStruct {
 		if slices.Contains(filenames, unit.filename) {
+			lines, err := countLinesWithoutHeader(path + unit.filename)
+			if err != nil {
+				return nil, fmt.Errorf("when counting lines in %s: %w", unit.filename, err)
+			}
+			unit.lastID = lines
+
 			continue
 		}
 
@@ -181,6 +188,49 @@ func (s *csvStorage) UpdateGlobalRoomSource(sourceID string) (string, error) {
 	}
 
 	return sourceID, nil
+}
+
+func (s *csvStorage) AddSource(source source.Source) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	file, err := os.OpenFile(s.basePath+s.dataStruct[sourcesTable].filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	id := s.getNewSourceID()
+
+	record := []string{
+		id,
+		source.Name,
+		source.Url,
+	}
+	if err := writer.Write(record); err != nil {
+		return "", err
+	}
+
+	s.dataStruct[sourcesTable].lastID += 1
+
+	return id, nil
+
+}
+
+func countLinesWithoutHeader(path string) (int, error) {
+	lines, err := readAllFromFile(path)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(lines) - 1, nil
+}
+
+func (s *csvStorage) getNewSourceID() string {
+	return strconv.Itoa(s.dataStruct[sourcesTable].lastID + 1)
 }
 
 func readAllFromFile(path string) ([][]string, error) {

@@ -72,6 +72,7 @@ func main() {
 
 	// sources
 	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)
+	mux.HandleFunc("POST /api/sources", sourceHandler.AddSource)
 
 	// room
 	mux.HandleFunc("GET /api/room", roomHandler.GetGlobalRoom)

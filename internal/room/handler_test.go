@@ -131,7 +131,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 		room       *Room
 		src        *source.Source
 		wantID     string
-		wantMsg    string
+		wantError  string
 		wantStatus int
 		wantErr    error
 		updateErr  error
@@ -143,7 +143,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			room:       &Room{ID: "1", SourceID: "1"},
 			src:        &source.Source{ID: "5", Name: "Film", Url: "http://vk.com/1"},
 			wantID:     "5",
-			wantMsg:    "ok",
+			wantError:  "ok",
 			wantStatus: http.StatusOK,
 			wantErr:    nil,
 			updateErr:  nil,
@@ -155,7 +155,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			room:       nil,
 			src:        nil,
 			wantID:     "",
-			wantMsg:    "invalid req path",
+			wantError:  "invalid req path",
 			wantStatus: http.StatusBadRequest,
 			wantErr:    nil,
 			updateErr:  nil,
@@ -167,7 +167,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			room:       nil,
 			src:        nil,
 			wantID:     "",
-			wantMsg:    "cannot read req body",
+			wantError:  "cannot read req body",
 			wantStatus: http.StatusBadRequest,
 			wantErr:    nil,
 			updateErr:  nil,
@@ -179,7 +179,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			room:       nil,
 			src:        nil,
 			wantID:     "",
-			wantMsg:    "cannot get source with id 999",
+			wantError:  "cannot get source with id 999",
 			wantStatus: http.StatusBadRequest,
 			wantErr:    nil,
 			updateErr:  nil,
@@ -191,7 +191,7 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			room:       nil,
 			src:        &source.Source{ID: "5", Name: "Film", Url: "http://vk.com/1"},
 			wantID:     "",
-			wantMsg:    "cannot update global room source",
+			wantError:  "cannot update global room source",
 			wantStatus: http.StatusInternalServerError,
 			wantErr:    nil,
 			updateErr:  errUpdate,
@@ -220,8 +220,8 @@ func TestHandlerPatchGlobalRoomSource(t *testing.T) {
 			if resp.ID != tt.wantID {
 				t.Errorf("resp.ID = %q, want %q", resp.ID, tt.wantID)
 			}
-			if resp.Message != tt.wantMsg {
-				t.Errorf("resp.Message = %q, want %q", resp.Message, tt.wantMsg)
+			if resp.Error != tt.wantError {
+				t.Errorf("resp.Error = %q, want %q", resp.Error, tt.wantError)
 			}
 		})
 	}
