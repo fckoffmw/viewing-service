@@ -9,17 +9,65 @@
 <body>
   <div class="container">
     <h1><a href="/index.html">w2g</a> — Контент</h1>
-    <a href="/room.html" class="to-room-btn">→ В комнату</a>
+    <div class="header-row">
+      <a href="/room.html" class="to-room-btn">→ В комнату</a>
+      <button onclick="openModal()" class="add-btn">+ Добавить</button>
+    </div>
     <div id="sources"></div>
+  </div>
+
+  <div id="modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2>Добавить источник</h2>
+      <form id="add-form">
+        <input type="text" id="source-name" placeholder="Название" required>
+        <input type="text" id="source-url" placeholder="URL iframe" required>
+        <div class="modal-btns">
+          <button type="button" onclick="closeModal()" class="cancel-btn">Отмена</button>
+          <button type="submit" class="submit-btn">Добавить</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
     var activeSourceId = null;
 
+    function openModal() {
+      document.getElementById("modal").style.display = "flex";
+      document.getElementById("source-name").value = "";
+      document.getElementById("source-url").value = "";
+      document.getElementById("source-name").focus();
+    }
+
+    function closeModal() {
+      document.getElementById("modal").style.display = "none";
+    }
+
+    document.getElementById("add-form").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      var name = document.getElementById("source-name").value.trim();
+      var url = document.getElementById("source-url").value.trim();
+      if (!name || !url) return;
+
+      var res = await fetch("/api/sources", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name, url: url }),
+      });
+
+      var data = await res.json();
+      if (res.ok) {
+        closeModal();
+        loadSources();
+      } else {
+        alert("Ошибка: " + data.error);
+      }
+    });
+
     async function loadSources() {
       var container = document.getElementById("sources");
 
-      // загружаем текущий источник комнаты
       try {
         var roomRes = await fetch("/api/room");
         if (roomRes.ok) {
@@ -30,7 +78,6 @@
         }
       } catch {}
 
-      // загружаем источники
       var res;
       try {
         res = await fetch("/api/sources");
@@ -81,7 +128,7 @@
         if (res.ok) {
           loadSources();
         } else {
-          alert("Ошибка: " + data.message);
+          alert("Ошибка: " + data.error);
         }
       } catch {
         alert("Не удалось обновить источник");

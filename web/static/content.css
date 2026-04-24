@@ -42,6 +42,26 @@ h1 a {
   background: #3a7a3a;
 }
 
+.header-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.add-btn {
+  padding: 8px 16px;
+  background: #2a4a6a;
+  color: #eee;
+  border: 1px solid #446;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.add-btn:hover {
+  background: #3a5a8a;
+}
+
 .badge {
   font-size: 0.75rem;
   background: #2a6a2a;
@@ -92,4 +112,82 @@ button:hover {
 
 .error {
   color: #e55;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-content h2 {
+  margin-bottom: 16px;
+  font-size: 1.1rem;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.modal-content input::placeholder {
+  color: #666;
+}
+
+.modal-content input:focus {
+  outline: none;
+  border-color: #4a6a9a;
+}
+
+.modal-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.cancel-btn {
+  padding: 8px 16px;
+  background: #2a2a2a;
+  color: #ccc;
+  border: 1px solid #444;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: #3a3a3a;
+}
+
+.submit-btn {
+  padding: 8px 16px;
+  background: #2a4a6a;
+  color: #eee;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.submit-btn:hover {
+  background: #3a5a8a;
 }
