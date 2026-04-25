@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"w2g/internal/auth"
 	"w2g/internal/room"
 	"w2g/internal/source"
@@ -24,7 +25,7 @@ var (
 
 	usersUnit = dataUnit{
 		filename: usersTable + ".csv",
-		fields:   []string{"id", "username", "pass_hash"},
+		fields:   []string{"id", "username", "pass_hash", "created_at"},
 	}
 
 	sourcesUnit = dataUnit{
@@ -107,8 +108,29 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 	}, nil
 }
 
-func (s *csvStorage) GetUserByUsername(username string) (auth.User, error) {
-	return auth.User{}, nil
+func (s *csvStorage) GetUserByUsername(username string) (*auth.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	filename := s.dataStruct[usersTable].filename
+
+	rows, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("when read file %s: %w", filename, err)
+	}
+
+	users, err := rowsTo[auth.User](rows)
+	if err != nil {
+		return nil, fmt.Errorf("when convert csv rows to user struct: %w", err)
+	}
+
+	for _, u := range users {
+		if u.Username == username {
+			return &u, nil
+		}
+	}
+
+	return nil, nil
 }
 
 func (s *csvStorage) GetAllSources() ([]source.Source, error) {
@@ -124,7 +146,7 @@ func (s *csvStorage) GetAllSources() ([]source.Source, error) {
 
 	sources, err := rowsTo[source.Source](rows)
 	if err != nil {
-		return nil, fmt.Errorf("when convert csv rows to frame struct: %w", err)
+		return nil, fmt.Errorf("when convert csv rows to source struct: %w", err)
 	}
 
 	return sources, nil
@@ -217,7 +239,36 @@ func (s *csvStorage) AddSource(source source.Source) (string, error) {
 	s.dataStruct[sourcesTable].lastID += 1
 
 	return id, nil
+}
 
+func (s *csvStorage) AddUser(user auth.User) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	file, err := os.OpenFile(s.basePath+s.dataStruct[usersTable].filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	id := s.getNewSourceID()
+
+	record := []string{
+		id,
+		user.Username,
+		user.Password,
+		time.Now().Format(),
+	}
+	if err := writer.Write(record); err != nil {
+		return "", err
+	}
+
+	s.dataStruct[sourcesTable].lastID += 1
+
+	return id, nil
 }
 
 func countLinesWithoutHeader(path string) (int, error) {

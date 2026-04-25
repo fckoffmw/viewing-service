@@ -13,7 +13,7 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ htt
 ## Пакеты
 
 | Пакет | Назначение |
-|-------|------------|
+|-------|----------|
 | `auth` | Аутентификация (stub) |
 | `chat` | WebSocket: Hub + Client |
 | `middleware` | HTTP middleware (logging) |
@@ -43,11 +43,9 @@ Client ──→ readPump ──→ hub.broadcast ──→ writePump ──→ 
 
 CSV файлы в `./storage/`:
 
-| Файл | Описание |
-|------|----------|
-| `users.csv` | Пользователи |
-| `sources.csv` | Источники видео |
-| `rooms.csv` | Комнаты |
+- `users.csv` — пользователи
+- `sources.csv` — источники видео
+- `rooms.csv` — комнаты
 
 Thread-safe через `sync.RWMutex`. Каждый запрос читает файл целиком.
 
@@ -59,7 +57,6 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 | GET | `/ws` | WebSocket чат |
 | GET | `/healthz` | Health check |
 | GET | `/api/sources` | source.GetAllSources |
-| POST | `/api/sources` | source.AddSource |
 | GET | `/api/room` | room.GetGlobalRoom |
 | PATCH | `/api/room/source` | room.PatchGlobalRoomSource |
 
@@ -69,4 +66,3 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 |--------|--------|
 | `gorilla/websocket` | v1.5.3 |
 | `github.com/google/uuid` | v1.6.0 |
-| `github.com/joho/godotenv` | v1.5.1 |
