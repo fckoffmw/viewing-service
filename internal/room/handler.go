@@ -27,7 +27,7 @@ type RoomResponse struct {
 	ID            string         `json:"id,omitempty"`
 	Name          string         `json:"name,omitempty"`
 	CurrentSource *source.Source `json:"current_source,omitempty"`
-	Message       string         `json:"message,omitempty"`
+	Error         string         `json:"error,omitempty"`
 }
 
 func NewHandler(s Service, l *slog.Logger) *handler {
@@ -83,7 +83,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("invalid req path", "request_id", requestID, "path", r.URL.Path)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
-			Message: "invalid req path",
+			Error: "invalid req path",
 		})
 		return
 	}
@@ -93,7 +93,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("when reading req body", "request_id", requestID, "err", err)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
-			Message: "cannot read req body",
+			Error: "cannot read req body",
 		})
 		return
 	}
@@ -103,7 +103,7 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("when getting source with id", "request_id", requestID, "id", req.SourceID, "err", err)
 
 		writeError(w, http.StatusBadRequest, RoomResponse{
-			Message: "cannot get source with id " + req.SourceID,
+			Error: "cannot get source with id " + req.SourceID,
 		})
 		return
 	}
@@ -113,15 +113,15 @@ func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 		h.log.Error("when updating global room source", "request_id", requestID, "err", err)
 
 		writeError(w, http.StatusInternalServerError, RoomResponse{
-			Message: "cannot update global room source",
+			Error: "cannot update global room source",
 		})
 		return
 	}
 	h.log.Info("successfuly updated global room source", "request_id", requestID, "id", id)
 
 	resp := RoomResponse{
-		ID:      id,
-		Message: "ok",
+		ID:    id,
+		Error: "ok",
 	}
 
 	w.Header().Set("Content-Type", "application/json")

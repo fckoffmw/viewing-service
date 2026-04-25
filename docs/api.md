@@ -1,8 +1,8 @@
-# w2g: REST API
+# REST API
 
-## Источники
+## Sources
 
-### `GET /api/sources`
+### GET /api/sources
 
 Возвращает список всех источников.
 
@@ -18,9 +18,40 @@
 ]
 ```
 
-## Комната
+### POST /api/sources
 
-### `GET /api/room`
+Добавляет новый источник.
+
+**Request:**
+
+```json
+{
+  "name": "Название видео",
+  "url": "https://vkvideo.ru/..."
+}
+```
+
+**Response 200:**
+
+```json
+{
+  "id": "2"
+}
+```
+
+**Response 400:**
+
+```json
+{
+  "error": "cannot read req body"
+}
+```
+
+---
+
+## Room
+
+### GET /api/room
 
 Возвращает информацию о глобальной комнате.
 
@@ -38,7 +69,7 @@
 }
 ```
 
-### `PATCH /api/room/source`
+### PATCH /api/room/source
 
 Устанавливает активный источник в глобальной комнате.
 
@@ -55,7 +86,7 @@
 ```json
 {
   "id": "1",
-  "message": "ok"
+  "error": "ok"
 }
 ```
 
@@ -63,7 +94,7 @@
 
 ```json
 {
-  "message": "some error message"
+  "error": "some error message"
 }
 ```
 
@@ -71,19 +102,23 @@
 
 ```json
 {
-  "message": "some error message"
+  "error": "some error message"
 }
 ```
 
+---
+
 ## Заголовки ответа
 
-### `X-Request-ID`
+### X-Request-ID
 
 Идентификатор запроса (8 символов UUID). Используется для трейсинга.
 
+---
+
 ## WebSocket
 
-### `GET /ws`
+### GET /ws
 
 WebSocket для чата.
 
