@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewSessionStore(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 	if store == nil {
 		t.Fatal("expected store, got nil")
 	}
@@ -17,7 +17,7 @@ func TestNewSessionStore(t *testing.T) {
 }
 
 func TestSessionStore_Set_Get(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 
 	sess := &Session{
 		SessionID:  "test-session-1",
@@ -39,7 +39,7 @@ func TestSessionStore_Set_Get(t *testing.T) {
 }
 
 func TestSessionStore_Get_NotFound(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 
 	_, ok := store.Get("nonexistent")
 	if ok {
@@ -48,7 +48,7 @@ func TestSessionStore_Get_NotFound(t *testing.T) {
 }
 
 func TestSessionStore_Delete(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 
 	sess := &Session{
 		SessionID:  "test-session-1",
@@ -68,7 +68,7 @@ func TestSessionStore_Delete(t *testing.T) {
 }
 
 func TestSessionStore_Cleanup(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 
 	expired := &Session{
 		SessionID:  "expired-session",
@@ -89,7 +89,7 @@ func TestSessionStore_Cleanup(t *testing.T) {
 	store.Set(expired)
 	store.Set(valid)
 
-	store.Cleanup()
+	store.cleanup()
 
 	_, ok := store.Get("expired-session")
 	if ok {
@@ -103,7 +103,7 @@ func TestSessionStore_Cleanup(t *testing.T) {
 }
 
 func TestSessionStore_Concurrency(t *testing.T) {
-	store := NewSessionStore()
+	store := NewSessionStore(time.Minute)
 	var wg sync.WaitGroup
 
 	for i := 0; i < 100; i++ {

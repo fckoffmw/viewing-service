@@ -12,18 +12,20 @@ func init() {
 }
 
 type Config struct {
-	Port       string
-	StorageDir string
-	MaxClients int
-	LogLevel   string
+	Port                    string
+	StorageDir              string
+	MaxClients              int
+	LogLevel                string
+	SessionsCleanupInterval int
 }
 
 func Load() *Config {
 	return &Config{
-		Port:       getEnv("PORT", "8080"),
-		StorageDir: getEnv("STORAGE_DIR", "./storage/"),
-		MaxClients: getEnvInt("MAX_CLIENTS", 2),
-		LogLevel:   getEnv("LOG_LEVEL", "debug"),
+		Port:                    getEnv("PORT", "8080"),
+		StorageDir:              getEnv("STORAGE_DIR", "./storage/"),
+		MaxClients:              getEnvInt("MAX_CLIENTS", 2),
+		LogLevel:                getEnv("LOG_LEVEL", "debug"),
+		SessionsCleanupInterval: getEnvInt("SESSIONS_CLEANUP_INTERVAL", 300),
 	}
 }
 

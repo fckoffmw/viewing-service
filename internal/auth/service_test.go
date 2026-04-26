@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
+	apperrors "w2g/internal/errors"
 )
 
 type mockRepo struct {
@@ -13,6 +14,13 @@ type mockRepo struct {
 }
 
 func (m *mockRepo) GetUserByUsername(username string) (*User, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.user, nil
+}
+
+func (m *mockRepo) GetUserByID(id string) (*User, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -37,6 +45,20 @@ func (m *mockSessionStore) Set(sess *Session) {
 	m.sessions[sess.SessionID] = sess
 }
 
+func (m *mockSessionStore) Get(id string) (*Session, bool) {
+	if m.sessions == nil {
+		return nil, false
+	}
+	sess, ok := m.sessions[id]
+	return sess, ok
+}
+
+func (m *mockSessionStore) Delete(id string) {
+	if m.sessions != nil {
+		delete(m.sessions, id)
+	}
+}
+
 func TestService_Register(t *testing.T) {
 	t.Run("empty username", func(t *testing.T) {
 		repo := &mockRepo{}
@@ -45,8 +67,9 @@ func TestService_Register(t *testing.T) {
 
 		_, err := svc.Register("", "password123")
 
-		if !errors.Is(err, ErrEmptyUsername) {
-			t.Errorf("expected ErrEmptyUsername, got %v", err)
+		var appErr *apperrors.Error
+		if !errors.As(err, &appErr) || appErr.Code != 400 {
+			t.Errorf("expected 400 error, got %v", err)
 		}
 	})
 
@@ -57,8 +80,9 @@ func TestService_Register(t *testing.T) {
 
 		_, err := svc.Register("user", "abc")
 
-		if !errors.Is(err, ErrShortPassword) {
-			t.Errorf("expected ErrShortPassword, got %v", err)
+		var appErr *apperrors.Error
+		if !errors.As(err, &appErr) || appErr.Code != 400 {
+			t.Errorf("expected 400 error, got %v", err)
 		}
 	})
 
@@ -69,8 +93,9 @@ func TestService_Register(t *testing.T) {
 
 		_, err := svc.Register("existing", "password123")
 
-		if !errors.Is(err, ErrUserAlreadyExists) {
-			t.Errorf("expected ErrUserAlreadyExists, got %v", err)
+		var appErr *apperrors.Error
+		if !errors.As(err, &appErr) || appErr.Code != 400 {
+			t.Errorf("expected 400 error, got %v", err)
 		}
 	})
 
@@ -125,8 +150,9 @@ func TestService_Login(t *testing.T) {
 
 		_, err := svc.Login("nonexistent", "password123")
 
-		if !errors.Is(err, ErrInvalidCredentials) {
-			t.Errorf("expected ErrInvalidCredentials, got %v", err)
+		var appErr *apperrors.Error
+		if !errors.As(err, &appErr) || appErr.Code != 401 {
+			t.Errorf("expected 401 error, got %v", err)
 		}
 	})
 
@@ -137,8 +163,9 @@ func TestService_Login(t *testing.T) {
 
 		_, err := svc.Login("user", "wrongpassword")
 
-		if !errors.Is(err, ErrInvalidCredentials) {
-			t.Errorf("expected ErrInvalidCredentials, got %v", err)
+		var appErr *apperrors.Error
+		if !errors.As(err, &appErr) || appErr.Code != 401 {
+			t.Errorf("expected 401 error, got %v", err)
 		}
 	})
 

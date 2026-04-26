@@ -133,6 +133,31 @@ func (s *csvStorage) GetUserByUsername(username string) (*auth.User, error) {
 	return nil, nil
 }
 
+func (s *csvStorage) GetUserByID(id string) (*auth.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	filename := s.dataStruct[usersTable].filename
+
+	rows, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("when read file %s: %w", filename, err)
+	}
+
+	users, err := rowsTo[auth.User](rows)
+	if err != nil {
+		return nil, fmt.Errorf("when convert csv rows to user struct: %w", err)
+	}
+
+	for _, u := range users {
+		if u.ID == id {
+			return &u, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func (s *csvStorage) GetAllSources() ([]source.Source, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

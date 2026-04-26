@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
@@ -34,6 +35,7 @@ func main() {
 		"PORT", config.Port,
 		"MAX_CLIENTS", config.MaxClients,
 		"LOG_LEVEL", config.LogLevel,
+		"SESSIONS_CLEANUP_INTERVAL", config.SessionsCleanupInterval,
 	)
 
 	csvStorage, err := repo.NewCSVStorage(config.StorageDir)
@@ -42,7 +44,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	sessionStore := auth.NewSessionStore()
+	sessionStore := auth.NewSessionStore(time.Duration(config.SessionsCleanupInterval) * time.Second)
+	go sessionStore.CleanupLoop()
+	defer sessionStore.Stop()
 
 	sourceService := source.NewService(csvStorage)
 	sourceHandler := source.NewHandler(sourceService, log)
@@ -65,19 +69,15 @@ func main() {
 		_, _ = w.Write([]byte("ok"))
 	})
 
-	// api
-
-	// login
+	// public API (no auth required)
 	mux.HandleFunc("POST /auth/login", authHandler.Login)
-	// logout
-	// register
 	mux.HandleFunc("POST /auth/register", authHandler.Register)
+	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
+	mux.HandleFunc("GET /auth/me", authHandler.Me)
 
-	// sources
+	// protected API (auth required)
 	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)
 	mux.HandleFunc("POST /api/sources", sourceHandler.AddSource)
-
-	// room
 	mux.HandleFunc("GET /api/room", roomHandler.GetGlobalRoom)
 	mux.HandleFunc("PATCH /api/room/source", roomHandler.PatchGlobalRoomSource)
 
@@ -86,6 +86,7 @@ func main() {
 	}
 
 	wrappedMux := middleware.Logging(log, mux)
+	wrappedMux = middleware.Auth(log, sessionStore, wrappedMux)
 
 	server := &http.Server{
 		Addr:    addr,
@@ -96,6 +97,8 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Error("server error", "err", err)
 	}
+
+	log.Info("w2g server stopped")
 }
 
 func initLogger(level string) {

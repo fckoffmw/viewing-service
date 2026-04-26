@@ -5,7 +5,16 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+
+	apperrors "w2g/internal/errors"
 )
+
+type Service interface {
+	Login(username, password string) (string, error)
+	Register(username, password string) (string, error)
+	Logout(sessionID string)
+	GetUserBySession(sessionID string) (*User, error)
+}
 
 type credentials struct {
 	Username string `json:"username"`
@@ -13,16 +22,15 @@ type credentials struct {
 }
 
 type handler struct {
-	service *service
+	service Service
 	log     *slog.Logger
 }
 
 type AuthResponse struct {
-	Error   string `json:"error,omitempty"`
-	Message string `json:"message,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
-func NewHandler(s *service, l *slog.Logger) *handler {
+func NewHandler(s Service, l *slog.Logger) *handler {
 	return &handler{
 		service: s,
 		log:     l,
@@ -42,9 +50,7 @@ func (h handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		h.log.Error("when reading req body", "request_id", requestID, "err", err)
 
-		writeError(w, http.StatusBadRequest, AuthResponse{
-			Error: "cannot read req body",
-		})
+		writeError(w, http.StatusBadRequest, AuthResponse{Error: "cannot read req body"})
 		return
 	}
 	defer r.Body.Close()
@@ -53,16 +59,13 @@ func (h handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Error("when login", "request_id", requestID, "err", err)
 
-		if errors.Is(err, ErrInvalidCredentials) {
-			writeError(w, http.StatusUnauthorized, AuthResponse{
-				Error: "invalid credentials",
-			})
+		var appErr *apperrors.Error
+		if errors.As(err, &appErr) {
+			writeError(w, appErr.Code, AuthResponse{Error: appErr.Message})
 			return
 		}
 
-		writeError(w, http.StatusInternalServerError, AuthResponse{
-			Error: "internal server error",
-		})
+		writeError(w, http.StatusInternalServerError, AuthResponse{Error: "internal server error"})
 		return
 	}
 
@@ -72,11 +75,15 @@ func (h handler) Login(w http.ResponseWriter, r *http.Request) {
 		Name:     "session_id",
 		Value:    sessionID,
 		HttpOnly: true,
-		Secure:   false, // ! TODO
+		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   604800,
 	})
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(AuthResponse{})
 }
 
 func (h handler) Register(w http.ResponseWriter, r *http.Request) {
@@ -86,9 +93,7 @@ func (h handler) Register(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
 		h.log.Error("when reading req body", "request_id", requestID, "err", err)
 
-		writeError(w, http.StatusBadRequest, AuthResponse{
-			Error: "cannot read req body",
-		})
+		writeError(w, http.StatusBadRequest, AuthResponse{Error: "cannot read req body"})
 		return
 	}
 	defer r.Body.Close()
@@ -97,16 +102,13 @@ func (h handler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Error("when register", "request_id", requestID, "err", err)
 
-		if errors.Is(err, ErrUserAlreadyExists) || errors.Is(err, ErrShortPassword) || errors.Is(err, ErrEmptyUsername) {
-			writeError(w, http.StatusBadRequest, AuthResponse{
-				Error: err.Error(),
-			})
+		var appErr *apperrors.Error
+		if errors.As(err, &appErr) {
+			writeError(w, appErr.Code, AuthResponse{Error: appErr.Message})
 			return
 		}
 
-		writeError(w, http.StatusInternalServerError, AuthResponse{
-			Error: "internal server error",
-		})
+		writeError(w, http.StatusInternalServerError, AuthResponse{Error: "internal server error"})
 		return
 	}
 
@@ -118,7 +120,55 @@ func (h handler) Register(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		Secure:   false,
 		SameSite: http.SameSiteLaxMode,
+		Path:     "/",
+		MaxAge:   604800,
 	})
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(AuthResponse{})
+}
+
+func (h handler) Logout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	h.service.Logout(cookie.Value)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+	})
+
+	w.WriteHeader(http.StatusOK)
+}
+
+type MeResponse struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+}
+
+func (h handler) Me(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, AuthResponse{Error: "session not found"})
+		return
+	}
+
+	user, err := h.service.GetUserBySession(cookie.Value)
+	if err != nil {
+		writeError(w, http.StatusUnauthorized, AuthResponse{Error: "session not found"})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(MeResponse{
+		ID:       user.ID,
+		Username: user.Username,
+	})
 }

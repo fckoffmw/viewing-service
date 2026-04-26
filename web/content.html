@@ -11,6 +11,7 @@
     <h1><a href="/index.html">w2g</a> — Контент</h1>
     <div class="header-row">
       <a href="/room.html" class="to-room-btn">→ В комнату</a>
+      <button onclick="logout()" class="logout-btn">Выход</button>
       <button onclick="openModal()" class="add-btn">+ Добавить</button>
     </div>
     <div id="sources"></div>
@@ -31,6 +32,16 @@
   </div>
 
   <script>
+    // --- auth check ---
+    async function checkAuth() {
+      var res = await fetch("/auth/me");
+      if (!res.ok) {
+        window.location.href = "/login.html";
+        return false;
+      }
+      return true;
+    }
+
     var activeSourceId = null;
 
     function openModal() {
@@ -141,7 +152,17 @@
       return d.innerHTML;
     }
 
-    loadSources();
+    async function logout() {
+      await fetch("/auth/logout", { method: "POST" });
+      window.location.href = "/login.html";
+    }
+
+    // Start
+    checkAuth().then(function(ok) {
+      if (ok) {
+        loadSources();
+      }
+    });
   </script>
 </body>
 </html>

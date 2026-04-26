@@ -25,6 +25,16 @@
   </div>
 
   <script>
+    // --- auth check ---
+    async function checkAuth() {
+      var res = await fetch("/auth/me");
+      if (!res.ok) {
+        window.location.href = "/login.html";
+        return false;
+      }
+      return true;
+    }
+
     // --- player ---
     async function loadPlayer() {
       try {
@@ -94,8 +104,13 @@
       input.value = "";
     });
 
-    loadPlayer();
-    connect();
+    // Start
+    checkAuth().then(function(ok) {
+      if (ok) {
+        loadPlayer();
+        connect();
+      }
+    });
   </script>
 </body>
 </html>
