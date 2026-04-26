@@ -3,10 +3,10 @@ package auth
 import "time"
 
 type User struct {
-	ID        string
-	Username  string
-	Password  string
-	CreatedAt time.Time
+	ID           string
+	Username     string
+	PasswordHash string
+	CreatedAt    time.Time
 }
 
 type Session struct {

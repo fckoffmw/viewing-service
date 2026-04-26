@@ -1,12 +1,25 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
-	"fmt"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrInvalidPassword    = errors.New("password must be at least 4 characters")
+	ErrEmptyUsername      = errors.New("username cannot be empty")
 )
 
 const (
-	minPasswordLen = 8
+	minPasswordLen = 4
+	hashCost       = 12
+	sessionExpiry  = 7 * 24 * time.Hour
 )
 
 type repository interface {
@@ -14,36 +27,67 @@ type repository interface {
 	AddUser(user User) (string, error)
 }
 
+type sessionStore interface {
+	Set(*Session)
+}
+
 type service struct {
-	repo repository
+	repo         repository
+	sessionStore sessionStore
 }
 
-func NewService(r repository) *service {
+func NewService(r repository, s sessionStore) *service {
 	return &service{
-		repo: r,
+		repo:         r,
+		sessionStore: s,
 	}
 }
 
-func (s service) Login(creds credentials) error {
-	// достать пользоваля по имени
-	user, err := s.repo.GetUserByUsername(creds.Username)
+func (s *service) Register(username, password string) (string, error) {
+	if err := s.checkUsernameAndPassword(username, password); err != nil {
+		return "", err
+	}
+
+	passHash, err := bcrypt.GenerateFromPassword([]byte(password), hashCost)
 	if err != nil {
-
+		return "", err
 	}
-	_ = user
-	// сверить хеши
-	// сгенерить сессию
-	// вернуть сессию
-	return nil
+
+	createdAt := time.Now()
+
+	userID, err := s.repo.AddUser(User{
+		Username:     username,
+		PasswordHash: string(passHash),
+		CreatedAt:    createdAt,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	sessionID := generateSessionID()
+
+	s.sessionStore.Set(&Session{
+		SessionID:  sessionID,
+		UserID:     userID,
+		CreatedAt:  createdAt,
+		LastSeenAt: createdAt,
+		ExpiresAt:  createdAt.Add(sessionExpiry),
+	})
+
+	return sessionID, nil
 }
 
-func (s *service) Register(username, password string) (*Session, error) {
-	return &Session{}, nil
+func (s *service) Login(username, password string) (string, error) {
+	return "", nil
 }
 
-func (s *service) CheckUsernameAndPassword(username, password string) error {
+func (s *service) checkUsernameAndPassword(username, password string) error {
 	if username == "" {
-		return errors.New("username cannot be empty")
+		return ErrEmptyUsername
+	}
+
+	if len(password) < minPasswordLen {
+		return ErrInvalidPassword
 	}
 
 	user, err := s.repo.GetUserByUsername(username)
@@ -51,17 +95,18 @@ func (s *service) CheckUsernameAndPassword(username, password string) error {
 		return err
 	}
 
-	if user == nil {
-		return nil
-	}
-
-	if user.Username == username {
-		return fmt.Errorf("user with username=%s has already exists", username)
-	}
-
-	if len(password) < minPasswordLen {
-		return fmt.Errorf("password must be at least %d characters", minPasswordLen)
+	if user != nil {
+		return ErrUserAlreadyExists
 	}
 
 	return nil
+}
+
+func generateSessionID() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
+
+	return base64.URLEncoding.EncodeToString(b)
 }

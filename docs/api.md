@@ -1,5 +1,65 @@
 # w2g: REST API
 
+## Аутентификация
+
+### `POST /auth/register`
+
+Регистрация нового пользователя.
+
+**Request:**
+
+```json
+{
+  "username": "user123",
+  "password": "password123"
+}
+```
+
+**Response 201:**
+
+Set-Cookie: `session_id=...; HttpOnly; SameSite=Lax`
+
+**Response 400:**
+
+```json
+{
+  "error": "username cannot be empty"
+}
+```
+
+**Response 500:**
+
+```json
+{
+  "error": "internal server error"
+}
+```
+
+### `POST /auth/login`
+
+Вход в систему.
+
+**Request:**
+
+```json
+{
+  "username": "user123",
+  "password": "password123"
+}
+```
+
+**Response 200:**
+
+Set-Cookie: `session_id=...; HttpOnly; SameSite=Lax`
+
+**Response 401:**
+
+```json
+{
+  "error": "invalid credentials"
+}
+```
+
 ## Источники
 
 ### `GET /api/sources`

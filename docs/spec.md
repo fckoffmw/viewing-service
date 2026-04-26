@@ -47,13 +47,13 @@
 | Backend | Go |
 | Frontend | HTML, CSS, JS (vanilla) |
 | Хранилище | CSV файлы |
-| Сессии | Redis (планируется) |
+| Сессии | in-memory (sync.RWMutex) |
 | Деплой | Docker Compose / VPS |
-| Синхронизация | ws + nats |
+| Синхронизация | ws + nats (TODO) |
 
 ## Реализация
 
-### Синхронизация
+### Синхронизация (TODO)
 - Вебсокеты для обмена сообщениями между клиентами и сервером
 - NATS для управления подписками на события
 
@@ -65,7 +65,8 @@
 |------|-----|----------|
 | `id` | string | Идентификатор |
 | `username` | string | Логин |
-| `pass_hash` | string | Хеш пароля |
+| `password_hash` | string | Хеш пароля (bcrypt) |
+| `created_at` | time | Время создания |
 
 ### Source
 

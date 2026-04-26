@@ -254,19 +254,24 @@ func (s *csvStorage) AddUser(user auth.User) (string, error) {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 
-	id := s.getNewSourceID()
+	id := s.getNewUserID()
+
+	createdAt := user.CreatedAt
+	if createdAt.IsZero() {
+		createdAt = time.Now()
+	}
 
 	record := []string{
 		id,
 		user.Username,
-		user.Password,
-		time.Now().Format(),
+		user.PasswordHash,
+		createdAt.Format(time.RFC3339),
 	}
 	if err := writer.Write(record); err != nil {
 		return "", err
 	}
 
-	s.dataStruct[sourcesTable].lastID += 1
+	s.dataStruct[usersTable].lastID += 1
 
 	return id, nil
 }
@@ -282,6 +287,10 @@ func countLinesWithoutHeader(path string) (int, error) {
 
 func (s *csvStorage) getNewSourceID() string {
 	return strconv.Itoa(s.dataStruct[sourcesTable].lastID + 1)
+}
+
+func (s *csvStorage) getNewUserID() string {
+	return strconv.Itoa(s.dataStruct[usersTable].lastID + 1)
 }
 
 func readAllFromFile(path string) ([][]string, error) {
@@ -319,25 +328,32 @@ func rowsTo[T any](rows [][]string) ([]T, error) {
 				continue
 			}
 
-			switch f.Kind() {
-			case reflect.String:
-				f.SetString(row[i])
-			case reflect.Int, reflect.Int64:
-				num, err := strconv.ParseInt(row[i], 10, 64)
-				if err != nil {
-					return nil, err
-				}
-
-				f.SetInt(num)
-			case reflect.Float64:
-				num, err := strconv.ParseFloat(row[i], 64)
-				if err != nil {
-					return nil, err
-				}
-
-				f.SetFloat(num)
-
+switch f.Kind() {
+		case reflect.String:
+			f.SetString(row[i])
+		case reflect.Int, reflect.Int64:
+			num, err := strconv.ParseInt(row[i], 10, 64)
+			if err != nil {
+				return nil, err
 			}
+
+			f.SetInt(num)
+		case reflect.Float64:
+			num, err := strconv.ParseFloat(row[i], 64)
+			if err != nil {
+				return nil, err
+			}
+
+			f.SetFloat(num)
+		case reflect.Struct:
+			if f.Type() == reflect.TypeOf(time.Time{}) {
+				t, err := time.Parse(time.RFC3339, row[i])
+				if err != nil {
+					return nil, err
+				}
+				f.Set(reflect.ValueOf(t))
+			}
+		}
 
 		}
 

@@ -42,11 +42,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	sessionStore := auth.NewSessionStore()
+
 	sourceService := source.NewService(csvStorage)
 	sourceHandler := source.NewHandler(sourceService, log)
 
-	authService := auth.NewService(csvStorage)
-	authHandler := auth.NewHandler(authService)
+	authService := auth.NewService(csvStorage, sessionStore)
+	authHandler := auth.NewHandler(authService, log)
 
 	roomService := room.NewService(csvStorage)
 	roomHandler := room.NewHandler(roomService, log)
@@ -66,9 +68,10 @@ func main() {
 	// api
 
 	// login
-	mux.HandleFunc("POST /api/login", authHandler.Login)
+	mux.HandleFunc("POST /auth/login", authHandler.Login)
 	// logout
 	// register
+	mux.HandleFunc("POST /auth/register", authHandler.Register)
 
 	// sources
 	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)

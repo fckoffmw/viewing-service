@@ -14,7 +14,7 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ htt
 
 | Пакет | Назначение |
 |-------|----------|
-| `auth` | Аутентификация (stub) |
+| `auth` | Аутентификация (Register, Login) |
 | `chat` | WebSocket: Hub + Client |
 | `middleware` | HTTP middleware (logging) |
 | `repo` | CSV хранилище |
@@ -56,7 +56,10 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 | GET | `/` | Static (web/index.html) |
 | GET | `/ws` | WebSocket чат |
 | GET | `/healthz` | Health check |
+| POST | `/auth/register` | auth.Register |
+| POST | `/auth/login` | auth.Login |
 | GET | `/api/sources` | source.GetAllSources |
+| POST | `/api/sources` | source.AddSource |
 | GET | `/api/room` | room.GetGlobalRoom |
 | PATCH | `/api/room/source` | room.PatchGlobalRoomSource |
 
@@ -66,3 +69,4 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 |--------|--------|
 | `gorilla/websocket` | v1.5.3 |
 | `github.com/google/uuid` | v1.6.0 |
+| `golang.org/x/crypto` | (bcrypt) |
