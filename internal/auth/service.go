@@ -12,7 +12,7 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrUserAlreadyExists  = errors.New("user already exists")
-	ErrInvalidPassword    = errors.New("password must be at least 4 characters")
+	ErrShortPassword      = errors.New("password must be at least 4 characters")
 	ErrEmptyUsername      = errors.New("username cannot be empty")
 )
 
@@ -43,8 +43,36 @@ func NewService(r repository, s sessionStore) *service {
 	}
 }
 
+func (s *service) Login(username, password string) (string, error) {
+	user, err := s.repo.GetUserByUsername(username)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return "", ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		return "", ErrInvalidCredentials
+	}
+
+	sessionID := generateSessionID()
+
+	createdAt := time.Now()
+
+	s.sessionStore.Set(&Session{
+		SessionID:  sessionID,
+		UserID:     user.ID,
+		CreatedAt:  createdAt,
+		LastSeenAt: createdAt,
+		ExpiresAt:  createdAt.Add(sessionExpiry),
+	})
+
+	return sessionID, nil
+}
+
 func (s *service) Register(username, password string) (string, error) {
-	if err := s.checkUsernameAndPassword(username, password); err != nil {
+	if err := s.checkUsernameAndPasswordWhenRegister(username, password); err != nil {
 		return "", err
 	}
 
@@ -77,17 +105,13 @@ func (s *service) Register(username, password string) (string, error) {
 	return sessionID, nil
 }
 
-func (s *service) Login(username, password string) (string, error) {
-	return "", nil
-}
-
-func (s *service) checkUsernameAndPassword(username, password string) error {
+func (s *service) checkUsernameAndPasswordWhenRegister(username, password string) error {
 	if username == "" {
 		return ErrEmptyUsername
 	}
 
 	if len(password) < minPasswordLen {
-		return ErrInvalidPassword
+		return ErrShortPassword
 	}
 
 	user, err := s.repo.GetUserByUsername(username)

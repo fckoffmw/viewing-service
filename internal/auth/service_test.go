@@ -3,6 +3,8 @@ package auth
 import (
 	"errors"
 	"testing"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type mockRepo struct {
@@ -55,8 +57,8 @@ func TestService_Register(t *testing.T) {
 
 		_, err := svc.Register("user", "abc")
 
-		if !errors.Is(err, ErrInvalidPassword) {
-			t.Errorf("expected ErrInvalidPassword, got %v", err)
+		if !errors.Is(err, ErrShortPassword) {
+			t.Errorf("expected ErrShortPassword, got %v", err)
 		}
 	})
 
@@ -113,4 +115,58 @@ func TestGenerateSessionID(t *testing.T) {
 	if id1 == id2 {
 		t.Error("expected unique session IDs")
 	}
+}
+
+func TestService_Login(t *testing.T) {
+	t.Run("user not found", func(t *testing.T) {
+		repo := &mockRepo{user: nil}
+		store := &mockSessionStore{}
+		svc := NewService(repo, store)
+
+		_, err := svc.Login("nonexistent", "password123")
+
+		if !errors.Is(err, ErrInvalidCredentials) {
+			t.Errorf("expected ErrInvalidCredentials, got %v", err)
+		}
+	})
+
+	t.Run("wrong password", func(t *testing.T) {
+		repo := &mockRepo{user: &User{ID: "1", Username: "user", PasswordHash: "$2a$12$hash"}}
+		store := &mockSessionStore{}
+		svc := NewService(repo, store)
+
+		_, err := svc.Login("user", "wrongpassword")
+
+		if !errors.Is(err, ErrInvalidCredentials) {
+			t.Errorf("expected ErrInvalidCredentials, got %v", err)
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		hash, _ := bcrypt.GenerateFromPassword([]byte("correctpassword"), 12)
+		repo := &mockRepo{user: &User{ID: "1", Username: "user", PasswordHash: string(hash)}}
+		store := &mockSessionStore{}
+		svc := NewService(repo, store)
+
+		sessionID, err := svc.Login("user", "correctpassword")
+
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if sessionID == "" {
+			t.Error("expected non-empty session ID")
+		}
+	})
+
+	t.Run("repo error", func(t *testing.T) {
+		repo := &mockRepo{err: errors.New("repo error")}
+		store := &mockSessionStore{}
+		svc := NewService(repo, store)
+
+		_, err := svc.Login("user", "password123")
+
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
 }
