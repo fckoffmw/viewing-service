@@ -11,6 +11,7 @@ go run ./cmd/w2g
 ## Docker Compose
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
 ```
 

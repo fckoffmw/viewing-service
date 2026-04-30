@@ -4,7 +4,10 @@
 
 ### TODO
 
-- [ ] разгрузить main
+- [ ] simple deploy
+- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
+- [ ] graceful shutdown для Hub
+- [ ] CORS middleware
 - [ ] sync
   - [ ] ws взаимодействие
   - [ ] nats
@@ -14,6 +17,7 @@
 
 ### DONE
 
+- [x] разгрузить main
 - [x] auth
 - [x] config
 - [x] logging

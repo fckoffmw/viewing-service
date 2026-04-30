@@ -22,7 +22,7 @@
 ### User
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `id` | string | UUID |
+| `id` | string | Порядковый номер |
 | `username` | string | Логин |
 | `password_hash` | string | bcrypt |
 | `created_at` | time | Время создания |
@@ -30,14 +30,14 @@
 ### Source
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `id` | string | UUID |
+| `id` | string | Порядковый номер |
 | `name` | string | Название |
 | `url` | string | URL iframe |
 
 ### Room
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `id` | string | UUID |
+| `id` | string | ID комнаты |
 | `source_id` | string | ID источника |
 
 ### Session

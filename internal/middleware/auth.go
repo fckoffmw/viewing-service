@@ -10,8 +10,6 @@ import (
 	"w2g/internal/auth"
 
 	apperrors "w2g/internal/errors"
-
-	"github.com/google/uuid"
 )
 
 type Middleware func(http.Handler, ...any) http.Handler
@@ -29,7 +27,6 @@ type SessionStore interface {
 
 func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Public routes - skip auth
 		publicPaths := map[string]bool{
 			"/":              true,
 			"/index.html":    true,
@@ -53,15 +50,6 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 			return
 		}
 
-		start := time.Now()
-
-		requestID := uuid.New().String()[:uuidLen]
-
-		ctx := context.WithValue(r.Context(), "request_id", requestID)
-		r = r.WithContext(ctx)
-
-		w.Header().Set("X-Request-ID", requestID)
-
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
 			writeUnauthorized(w, "session not found")
@@ -74,17 +62,13 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 			return
 		}
 
-		if session.ExpiresAt.Before(time.Now()) {
-			writeUnauthorized(w, "session expired")
-			return
-		}
-
 		now := time.Now()
 		session.LastSeenAt = now
 		session.ExpiresAt = now.Add(auth.SessionExpiry)
 		sessionStore.Set(session)
 
-		ctx = context.WithValue(r.Context(), "user_id", session.UserID)
+		requestID, _ := r.Context().Value("request_id").(string)
+		ctx := context.WithValue(r.Context(), "user_id", session.UserID)
 		r = r.WithContext(ctx)
 
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
@@ -96,7 +80,6 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", sw.status,
-			"duration", time.Since(start),
 		)
 	})
 }

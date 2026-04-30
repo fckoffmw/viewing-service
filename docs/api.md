@@ -16,7 +16,7 @@
 
 **Response 201:**
 - `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
-- `{"error": ""}`
+- `null`
 
 **Response 400:**
 ```json
@@ -44,7 +44,7 @@
 
 **Response 200:**
 - `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
-- `{"error": ""}`
+- `null`
 
 **Response 401:**
 ```json
@@ -112,7 +112,7 @@
 }
 ```
 
-**Response 200:**
+**Response 201:**
 ```json
 {"id": "new-id"}
 ```
@@ -165,7 +165,7 @@
 **Сообщение:**
 ```json
 {
-  "clientId": "user_abc123",
+  "username": "user123",
   "text": "Привет!"
 }
 ```

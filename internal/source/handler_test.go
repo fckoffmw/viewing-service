@@ -122,7 +122,7 @@ func TestHandlerAddSource(t *testing.T) {
 			addSourceID:  "3",
 			wantID:       "3",
 			wantErr:      nil,
-			wantStatus:   http.StatusOK,
+			wantStatus:   http.StatusCreated,
 			wantErrorMsg: "",
 		},
 		{

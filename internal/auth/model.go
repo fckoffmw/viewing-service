@@ -16,3 +16,7 @@ type Session struct {
 	LastSeenAt time.Time
 	ExpiresAt  time.Time
 }
+
+func (s Session) IsExpired() bool {
+	return s.ExpiresAt.Before(time.Now())
+}
