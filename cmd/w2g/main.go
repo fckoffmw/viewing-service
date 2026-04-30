@@ -25,7 +25,7 @@ var log *slog.Logger
 func main() {
 	config := config.Load()
 
-	initLogger(config.LogLevel)
+	initLogger(config.LogLevel, config.LogFile)
 
 	log.Info("config", "config", config.PrettyPrint())
 
@@ -96,7 +96,7 @@ func main() {
 	log.Info("shutdown complete")
 }
 
-func initLogger(level string) {
+func initLogger(level, logFile string) {
 	var levelValue slog.Level
 	switch strings.ToLower(level) {
 	case "info":
@@ -109,9 +109,22 @@ func initLogger(level string) {
 		levelValue = slog.LevelDebug
 	}
 
-	log = slog.New(
-		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: levelValue,
-		}),
-	)
+	var handlers []slog.Handler
+
+	handlers = append(handlers, slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: levelValue,
+	}))
+
+	if logFile != "" {
+		f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		if err != nil {
+			slog.Error("cannot open log file", "path", logFile, "err", err)
+		} else {
+			handlers = append(handlers, slog.NewTextHandler(f, &slog.HandlerOptions{
+				Level: levelValue,
+			}))
+		}
+	}
+
+	log = slog.New(slog.NewMultiHandler(handlers...))
 }

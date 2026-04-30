@@ -10,9 +10,9 @@
   <div class="container">
     <h1><a href="/index.html">w2g</a> — Контент</h1>
     <div class="header-row">
-      <a href="/room.html" class="to-room-btn">→ В комнату</a>
-      <button onclick="logout()" class="logout-btn">Выход</button>
-      <button onclick="openModal()" class="add-btn">+ Добавить</button>
+      <a href="/room.html" class="header-btn">В комнату</a>
+      <button onclick="openModal()" class="header-btn primary">+ Добавить</button>
+      <button onclick="logout()" class="header-btn">Выход</button>
     </div>
     <div id="sources"></div>
   </div>
@@ -113,13 +113,15 @@
           var isActive = s.id === activeSourceId;
           var badge = isActive ? '<span class="badge">активен</span>' : '';
           var cardClass = isActive ? 'source-card source-card-active' : 'source-card';
+          var btnDisabled = isActive ? 'disabled' : '';
+          var btnText = isActive ? 'Активен' : 'Сделать активным';
           return (
             '<div class="' + cardClass + '">' +
               '<div class="source-info">' +
                 '<h2>' + esc(s.name) + ' ' + badge + '</h2>' +
                 '<span class="source-id">id: ' + esc(s.id) + '</span>' +
               '</div>' +
-              '<button onclick="setActive(\'' + s.id + '\')">Сделать активным</button>' +
+              '<button onclick="setActive(\'' + s.id + '\')" class="set-active-btn" ' + btnDisabled + '>' + btnText + '</button>' +
             '</div>'
           );
         })

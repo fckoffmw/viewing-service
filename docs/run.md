@@ -42,4 +42,5 @@ go test ./internal/... -v -count=1
 | `STORAGE_DIR` | `./storage/` | Директория CSV-файлов |
 | `MAX_CLIENTS` | `2` | Макс. клиентов в чате |
 | `LOG_LEVEL` | `debug` | Уровень логирования |
+| `LOG_FILE` | — | Путь к лог-файлу (опционально) |
 | `SESSIONS_CLEANUP_INTERVAL` | `300` | Интервал очистки сессий (сек) |

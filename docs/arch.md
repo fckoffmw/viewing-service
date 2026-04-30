@@ -14,13 +14,16 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 ## Пакеты
 
 | Пакет | Назначение |
-|-------|-----------|
+|-----|-----------|
 | `auth` | Аутентификация (Register, Login, Logout) |
 | `chat` | WebSocket: Hub + Client |
 | `middleware` | HTTP middleware (logging, auth) |
 | `repo` | CSV хранилище |
 | `room` | Управление комнатами |
 | `source` | Управление источниками |
+| `response` | Утилиты для HTTP ответов |
+| `errors` | Кастомные ошибки |
+| `config` | Конфигурация |
 
 ## Middleware
 

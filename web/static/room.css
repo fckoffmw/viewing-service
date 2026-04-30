@@ -77,16 +77,24 @@ body {
   word-break: break-word;
 }
 
-.msg-system {
+.msg-system .text {
   color: #666;
   font-style: italic;
 }
 
-.msg-me {
+.msg-me .username {
   color: #7b9cff;
 }
 
-.msg-other {
+.msg-me .text {
+  color: #aac4ff;
+}
+
+.msg-other .username {
+  color: #5cb85c;
+}
+
+.msg-other .text {
   color: #ccc;
 }
 

@@ -99,14 +99,20 @@
       var div = document.createElement("div");
       div.className = "msg msg-" + type;
       if (type === "me") {
-        div.textContent = "[" + username + "] " + text;
+        div.innerHTML = '<span class="username">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
       } else if (type === "other") {
-        div.textContent = "[" + username + "] " + text;
+        div.innerHTML = '<span class="username">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
       } else {
-        div.textContent = "[ " + text + " ]";
+        div.innerHTML = '<span class="text">[ ' + esc(text) + ' ]</span>';
       }
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function esc(s) {
+      var d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
     }
 
     form.addEventListener("submit", function(e) {
