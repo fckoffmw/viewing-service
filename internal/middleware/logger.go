@@ -1,11 +1,8 @@
 package middleware
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 
@@ -38,28 +35,4 @@ func Logging(log *slog.Logger, next http.Handler) http.Handler {
 			"duration", time.Since(start),
 		)
 	})
-}
-
-type statusWriter struct {
-	http.ResponseWriter
-	status int
-}
-
-func (sw *statusWriter) WriteHeader(status int) {
-	sw.status = status
-	sw.ResponseWriter.WriteHeader(status)
-}
-
-func (sw *statusWriter) Write(b []byte) (int, error) {
-	if sw.status == 0 {
-		sw.status = http.StatusOK
-	}
-	return sw.ResponseWriter.Write(b)
-}
-
-func (sw *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if hj, ok := sw.ResponseWriter.(http.Hijacker); ok {
-		return hj.Hijack()
-	}
-	return nil, nil, errors.New("ResponseWriter does not implement Hijacker")
 }

@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
+
+	"w2g/internal/response"
 	"w2g/internal/source"
 )
 
@@ -37,20 +38,13 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 	}
 }
 
-func writeError(w http.ResponseWriter, code int, resp RoomResponse) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(resp)
-}
-
 func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
 	room, err := h.service.GetGlobalRoom()
 	if err != nil {
 		h.log.Error("when getting global room", "request_id", requestID, "err", err)
-
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		response.WriteInternalError(w, "cannot get room")
 		return
 	}
 
@@ -60,70 +54,42 @@ func (h handler) GetGlobalRoom(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if room.SourceID != "" {
-		source, err := h.service.GetSourceById(room.SourceID)
+		src, err := h.service.GetSourceById(room.SourceID)
 		if err != nil {
 			h.log.Error("when getting source", "request_id", requestID, "err", err, "source_id", room.SourceID)
-
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			response.WriteInternalError(w, "cannot get source")
 			return
 		}
-
-		resp.CurrentSource = source
+		resp.CurrentSource = src
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	response.WriteOK(w, resp)
 }
 
 func (h handler) PatchGlobalRoomSource(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) != 4 || parts[1] != "api" || parts[2] != "room" || parts[3] != "source" {
-		h.log.Error("invalid req path", "request_id", requestID, "path", r.URL.Path)
-
-		writeError(w, http.StatusBadRequest, RoomResponse{
-			Error: "invalid req path",
-		})
-		return
-	}
-
 	var req Request
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.log.Error("when reading req body", "request_id", requestID, "err", err)
-
-		writeError(w, http.StatusBadRequest, RoomResponse{
-			Error: "cannot read req body",
-		})
+		response.WriteBadRequest(w, "cannot read req body")
 		return
 	}
-	defer r.Body.Close()
+	r.Body.Close()
 
 	if _, err := h.service.GetSourceById(req.SourceID); err != nil {
 		h.log.Error("when getting source with id", "request_id", requestID, "id", req.SourceID, "err", err)
-
-		writeError(w, http.StatusBadRequest, RoomResponse{
-			Error: "cannot get source with id " + req.SourceID,
-		})
+		response.WriteBadRequest(w, "source not found")
 		return
 	}
 
 	id, err := h.service.UpdateGlobalRoomSource(req.SourceID)
 	if err != nil {
 		h.log.Error("when updating global room source", "request_id", requestID, "err", err)
-
-		writeError(w, http.StatusInternalServerError, RoomResponse{
-			Error: "cannot update global room source",
-		})
+		response.WriteInternalError(w, "cannot update room")
 		return
 	}
 	h.log.Info("successfuly updated global room source", "request_id", requestID, "id", id)
 
-	resp := RoomResponse{
-		ID:    id,
-		Error: "ok",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	response.WriteOK(w, RoomResponse{ID: id})
 }

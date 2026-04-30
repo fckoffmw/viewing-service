@@ -1,62 +1,131 @@
 # REST API
 
-## Sources
+## Аутентификация
+
+### POST /auth/register
+
+Регистрация нового пользователя.
+
+**Request:**
+```json
+{
+  "username": "user123",
+  "password": "password123"
+}
+```
+
+**Response 201:**
+- `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
+- `null`
+
+**Response 400:**
+```json
+{"error": "username cannot be empty"}
+```
+
+**Response 500:**
+```json
+{"error": "internal server error"}
+```
+
+---
+
+### POST /auth/login
+
+Вход в систему.
+
+**Request:**
+```json
+{
+  "username": "user123",
+  "password": "password123"
+}
+```
+
+**Response 200:**
+- `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
+- `null`
+
+**Response 401:**
+```json
+{"error": "invalid credentials"}
+```
+
+---
+
+### POST /auth/logout
+
+Выход из системы. Требует `session_id` cookie.
+
+**Response 200:**
+- `Set-Cookie: session_id=; Max-Age=-1`
+
+---
+
+### GET /auth/me
+
+Информация о текущем пользователе. Требует `session_id` cookie.
+
+**Response 200:**
+```json
+{
+  "id": "user-id",
+  "username": "user123"
+}
+```
+
+**Response 401:**
+```json
+{"error": "session not found"}
+```
+
+---
+
+## Источники
 
 ### GET /api/sources
 
-Возвращает список всех источников.
+Список источников. Защищённый endpoint.
 
 **Response 200:**
-
 ```json
 [
   {
     "id": "1",
     "name": "Семь (1995)",
-    "url": "https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
+    "url": "https://vkvideo.ru/..."
   }
 ]
 ```
 
+---
+
 ### POST /api/sources
 
-Добавляет новый источник.
+Добавить источник. Защищённый endpoint.
 
 **Request:**
-
 ```json
 {
-  "name": "Название видео",
-  "url": "https://vkvideo.ru/..."
+  "name": "Название",
+  "url": "https://..."
 }
 ```
 
-**Response 200:**
-
+**Response 201:**
 ```json
-{
-  "id": "2"
-}
-```
-
-**Response 400:**
-
-```json
-{
-  "error": "cannot read req body"
-}
+{"id": "new-id"}
 ```
 
 ---
 
-## Room
+## Комната
 
 ### GET /api/room
 
-Возвращает информацию о глобальной комнате.
+Информация о глобальной комнате. Защищённый endpoint.
 
 **Response 200:**
-
 ```json
 {
   "id": "1",
@@ -64,55 +133,26 @@
   "current_source": {
     "id": "1",
     "name": "Семь (1995)",
-    "url": "https://vkvideo.ru/video_ext.php?oid=-231263435&id=456240185&hash=d1213ab8896c93b2&hd=4"
+    "url": "https://vkvideo.ru/..."
   }
-}
-```
-
-### PATCH /api/room/source
-
-Устанавливает активный источник в глобальной комнате.
-
-**Request:**
-
-```json
-{
-  "source_id": "1"
-}
-```
-
-**Response 200:**
-
-```json
-{
-  "id": "1",
-  "error": "ok"
-}
-```
-
-**Response 400:**
-
-```json
-{
-  "error": "some error message"
-}
-```
-
-**Response 500:**
-
-```json
-{
-  "error": "some error message"
 }
 ```
 
 ---
 
-## Заголовки ответа
+### PATCH /api/room/source
 
-### X-Request-ID
+Установить активный источник. Защищённый endpoint.
 
-Идентификатор запроса (8 символов UUID). Используется для трейсинга.
+**Request:**
+```json
+{"source_id": "1"}
+```
+
+**Response 200:**
+```json
+{"id": "1"}
+```
 
 ---
 
@@ -120,13 +160,20 @@
 
 ### GET /ws
 
-WebSocket для чата.
+Чат. Публичный endpoint.
 
-**Сообщение (JSON):**
-
+**Сообщение:**
 ```json
 {
-  "clientId": "user_abc123",
+  "username": "user123",
   "text": "Привет!"
 }
 ```
+
+---
+
+## Заголовки
+
+### X-Request-ID
+
+Идентификатор запроса (8 символов UUID) для трейсинга.

@@ -44,21 +44,33 @@ h1 a {
 
 .header-row {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.add-btn {
-  padding: 8px 16px;
-  background: #2a4a6a;
+.header-btn {
+  padding: 10px 18px;
+  background: #2a3a4a;
   color: #eee;
-  border: 1px solid #446;
+  border: 1px solid #445;
   border-radius: 6px;
   cursor: pointer;
   font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-block;
 }
 
-.add-btn:hover {
+.header-btn:hover {
+  background: #3a4a5a;
+}
+
+.header-btn.primary {
+  background: #2a4a6a;
+  border-color: #4a6a8a;
+}
+
+.header-btn.primary:hover {
   background: #3a5a8a;
 }
 
@@ -96,18 +108,26 @@ h1 a {
   color: #888;
 }
 
-button {
+.set-active-btn {
   padding: 8px 16px;
-  background: #2a2a2a;
-  color: #eee;
-  border: 1px solid #444;
+  background: #2a4a3a;
+  color: #8fbe8f;
+  border: 1px solid #4a6a4a;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  transition: background 0.2s;
 }
 
-button:hover {
-  background: #3a3a3a;
+.set-active-btn:hover:not(:disabled) {
+  background: #3a5a4a;
+}
+
+.set-active-btn:disabled {
+  background: #2a3a2a;
+  color: #5a6a5a;
+  border-color: #3a4a3a;
+  cursor: default;
 }
 
 .error {

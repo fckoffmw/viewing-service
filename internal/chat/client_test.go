@@ -10,43 +10,31 @@ func TestChatMessageParse(t *testing.T) {
 	tests := []struct {
 		name      string
 		jsonStr   string
-		wantID    string
-		wantText  string
 		wantValid bool
 	}{
 		{
 			name:      "valid message",
-			jsonStr:   `{"clientId":"user1","text":"hello"}`,
-			wantID:    "user1",
-			wantText:  "hello",
+			jsonStr:   `{"text":"hello"}`,
 			wantValid: true,
 		},
 		{
 			name:      "valid message with spaces",
-			jsonStr:   `{"clientId":"user1","text":"  hello world  "}`,
-			wantID:    "user1",
-			wantText:  "hello world",
+			jsonStr:   `{"text":"  hello world  "}`,
 			wantValid: true,
 		},
 		{
 			name:      "invalid json",
 			jsonStr:   `invalid`,
-			wantID:    "",
-			wantText:  "",
 			wantValid: false,
 		},
 		{
 			name:      "empty text",
-			jsonStr:   `{"clientId":"user1","text":""}`,
-			wantID:    "user1",
-			wantText:  "",
+			jsonStr:   `{"text":""}`,
 			wantValid: false,
 		},
 		{
 			name:      "text too long",
-			jsonStr:   `{"clientId":"user1","text":"` + strings.Repeat("a", maxTextLen+1) + `"}`,
-			wantID:    "user1",
-			wantText:  "",
+			jsonStr:   `{"text":"` + strings.Repeat("a", maxTextLen+1) + `"}`,
 			wantValid: false,
 		},
 	}
@@ -77,12 +65,6 @@ func TestChatMessageParse(t *testing.T) {
 
 			if !isValid {
 				t.Error("message should be valid")
-			}
-			if payload.ClientID != tt.wantID {
-				t.Errorf("ClientID = %q, want %q", payload.ClientID, tt.wantID)
-			}
-			if payload.Text != tt.wantText {
-				t.Errorf("Text = %q, want %q", payload.Text, tt.wantText)
 			}
 		})
 	}

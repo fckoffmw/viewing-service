@@ -13,6 +13,29 @@
       <a href="/content.html" class="btn">К контенту</a>
       <a href="/room.html" class="btn">К комнате</a>
     </div>
+    <p class="user-info" id="user-info" style="display:none">Привет, <span id="username"></span>!</p>
+    <button onclick="logout()" class="logout-btn" id="logout-btn" style="display:none">Выход</button>
   </div>
+
+  <script>
+    checkAuth();
+
+    async function checkAuth() {
+      var res = await fetch("/auth/me");
+      if (res.ok) {
+        var user = await res.json();
+        document.getElementById("username").textContent = user.username;
+        document.getElementById("user-info").style.display = "block";
+        document.getElementById("logout-btn").style.display = "block";
+      } else {
+        window.location.href = "/login.html";
+      }
+    }
+
+    async function logout() {
+      await fetch("/auth/logout", { method: "POST" });
+      window.location.href = "/login.html";
+    }
+  </script>
 </body>
 </html>

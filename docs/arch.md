@@ -3,31 +3,41 @@
 ## Обзор
 
 ```
-cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ http.ServeMux ──→ Routes
-                                                                    │
-                                                                    ├── Static (web/)
-                                                                    ├── WebSocket (/ws) ──→ chat.Hub
-                                                                    └── API (/api/*) ──→ Handlers
+cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ middleware.Auth ──→ Routes
+                                                                              │
+                                                                              ├── Static (web/, /static/)
+                                                                              ├── WebSocket (/ws)
+                                                                              ├── Auth API (/auth/*) - public
+                                                                              └── API (/api/*) - protected
 ```
 
 ## Пакеты
 
 | Пакет | Назначение |
-|-------|------------|
-| `auth` | Аутентификация (stub) |
+|-----|-----------|
+| `auth` | Аутентификация (Register, Login, Logout) |
 | `chat` | WebSocket: Hub + Client |
-| `middleware` | HTTP middleware (logging) |
+| `middleware` | HTTP middleware (logging, auth) |
 | `repo` | CSV хранилище |
 | `room` | Управление комнатами |
 | `source` | Управление источниками |
+| `response` | Утилиты для HTTP ответов |
+| `errors` | Кастомные ошибки |
+| `config` | Конфигурация |
 
-## HTTP Middleware
+## Middleware
 
-**logging** — логирование запросов:
+### logging
+Логирование запросов:
 - Генерирует `request_id` (8 символов UUID)
-- Добавляет в контекст запроса
 - Добавляет заголовок `X-Request-ID` в ответ
 - Логирует: method, path, status, duration
+
+### auth
+Аутентификация:
+- Пропускает публичные маршруты: `/`, `/login.html`, `/register.html`, `/auth/*`, `/healthz`, `/ws`, `/static/*`
+- Для защищённых маршрутов проверяет `session_id` cookie
+- Sliding expiry: обновляет `ExpiresAt` при каждом запросе
 
 ## WebSocket чат
 
@@ -42,22 +52,32 @@ Client ──→ readPump ──→ hub.broadcast ──→ writePump ──→ 
 ## Хранение
 
 CSV файлы в `./storage/`:
+- `users.csv` — пользователи
+- `sources.csv` — источники видео
+- `rooms.csv` — комнаты
 
-| Файл | Описание |
-|------|----------|
-| `users.csv` | Пользователи |
-| `sources.csv` | Источники видео |
-| `rooms.csv` | Комнаты |
-
-Thread-safe через `sync.RWMutex`. Каждый запрос читает файл целиком.
+Thread-safe через `sync.RWMutex`.
 
 ## Роуты
 
+### Публичные
+
 | Метод | Путь | Обработчик |
-|-------|------|------------|
+|-------|------|----------|
 | GET | `/` | Static (web/index.html) |
-| GET | `/ws` | WebSocket чат |
+| GET | `/login.html` | Static |
+| GET | `/register.html` | Static |
 | GET | `/healthz` | Health check |
+| POST | `/auth/register` | auth.Register |
+| POST | `/auth/login` | auth.Login |
+| POST | `/auth/logout` | auth.Logout |
+| GET | `/auth/me` | auth.Me |
+| GET | `/ws` | WebSocket чат |
+
+### Защищённые
+
+| Метод | Путь | Обработчик |
+|-------|------|----------|
 | GET | `/api/sources` | source.GetAllSources |
 | POST | `/api/sources` | source.AddSource |
 | GET | `/api/room` | room.GetGlobalRoom |
@@ -69,4 +89,4 @@ Thread-safe через `sync.RWMutex`. Каждый запрос читает ф
 |--------|--------|
 | `gorilla/websocket` | v1.5.3 |
 | `github.com/google/uuid` | v1.6.0 |
-| `github.com/joho/godotenv` | v1.5.1 |
+| `golang.org/x/crypto` | bcrypt |

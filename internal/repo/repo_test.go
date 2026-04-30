@@ -3,6 +3,9 @@ package repo
 import (
 	"os"
 	"testing"
+	"time"
+
+	"w2g/internal/auth"
 )
 
 type testRow struct {
@@ -310,5 +313,69 @@ func TestUpdateGlobalRoomSource(t *testing.T) {
 	}
 	if room.SourceID != "99" {
 		t.Errorf("expected SourceID=99, got %s", room.SourceID)
+	}
+}
+
+func TestGetUserByUsername(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"users.csv":  "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n2,bob,$2a$12$hash2," + time.Now().Add(time.Hour).Format(time.RFC3339) + "\n",
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,source_id\n1,1\n",
+	})
+
+	t.Run("found", func(t *testing.T) {
+		user, err := storage.GetUserByUsername("alice")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if user == nil {
+			t.Fatal("expected user, got nil")
+		}
+		if user.Username != "alice" {
+			t.Errorf("expected username=alice, got %s", user.Username)
+		}
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		user, err := storage.GetUserByUsername("unknown")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if user != nil {
+			t.Errorf("expected nil, got %v", user)
+		}
+	})
+}
+
+func TestAddUser(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"users.csv":  "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n",
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,source_id\n1,1\n",
+	})
+
+	user := auth.User{
+		Username:     "newuser",
+		PasswordHash: "$2a$12$newtesthash",
+	}
+
+	id, err := storage.AddUser(user)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "1" {
+		t.Errorf("expected id=1, got %s", id)
+	}
+
+	// проверяем что пользователь добавлен
+	newUser, err := storage.GetUserByUsername("newuser")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if newUser == nil {
+		t.Fatal("expected user, got nil")
+	}
+	if newUser.Username != "newuser" {
+		t.Errorf("expected username=newuser, got %s", newUser.Username)
 	}
 }

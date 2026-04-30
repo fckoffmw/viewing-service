@@ -25,6 +25,25 @@
   </div>
 
   <script>
+    // --- auth check + get username ---
+    var currentUsername = "";
+
+    async function checkAuth() {
+      try {
+        const res = await fetch("/auth/me");
+        if (!res.ok) {
+          window.location.href = "/login.html";
+          return false;
+        }
+        const user = await res.json();
+        currentUsername = user.username;
+        return true;
+      } catch {
+        window.location.href = "/login.html";
+        return false;
+      }
+    }
+
     // --- player ---
     async function loadPlayer() {
       try {
@@ -48,7 +67,6 @@
     }
 
     // --- chat ---
-    var clientId = "user_" + Math.random().toString(36).slice(2, 8);
     var messagesEl = document.getElementById("chat-messages");
     var form = document.getElementById("chat-form");
     var input = document.getElementById("chat-input");
@@ -59,43 +77,59 @@
       ws = new WebSocket(proto + "//" + location.host + "/ws");
 
       ws.onopen = function() {
-        appendMessage("system", "Подключено");
+        appendMessage("system", "", "Подключено");
       };
 
       ws.onmessage = function(e) {
         var data = JSON.parse(e.data);
-        appendMessage(data.clientId === clientId ? "me" : "other", data.text);
+        console.log("msg:", data.username, "current:", currentUsername, "match:", data.username === currentUsername);
+        appendMessage(data.username === currentUsername ? "me" : "other", data.username, data.text);
       };
 
       ws.onclose = function() {
-        appendMessage("system", "Отключено");
+        appendMessage("system", "", "Отключено");
+      };
+
+      ws.onerror = function() {
+        appendMessage("system", "", "Ошибка соединения");
       };
     }
 
-    function appendMessage(type, text) {
+    function appendMessage(type, username, text) {
       var div = document.createElement("div");
       div.className = "msg msg-" + type;
       if (type === "me") {
-        div.textContent = "Me: " + text;
+        div.innerHTML = '<span class="username">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
       } else if (type === "other") {
-        div.textContent = "NotMe: " + text;
+        div.innerHTML = '<span class="username">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
       } else {
-        div.textContent = "[ " + text + " ]";
+        div.innerHTML = '<span class="text">[ ' + esc(text) + ' ]</span>';
       }
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function esc(s) {
+      var d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
     }
 
     form.addEventListener("submit", function(e) {
       e.preventDefault();
       var text = input.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ clientId: clientId, text: text }));
+      ws.send(JSON.stringify({ text: text }));
       input.value = "";
     });
 
-    loadPlayer();
-    connect();
+    // Start
+    checkAuth().then(function(ok) {
+      if (ok) {
+        loadPlayer();
+        connect();
+      }
+    });
   </script>
 </body>
 </html>
