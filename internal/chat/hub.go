@@ -6,6 +6,7 @@ type Hub struct {
 	unregister chan *Client
 	broadcast  chan []byte
 	maxClients int
+	stopCh     chan struct{}
 }
 
 type registerRequest struct {
@@ -20,12 +21,16 @@ func NewHub(maxClients int) *Hub {
 		unregister: make(chan *Client),
 		broadcast:  make(chan []byte),
 		maxClients: maxClients,
+		stopCh:     make(chan struct{}),
 	}
 }
 
 func (h *Hub) Run() {
 	for {
 		select {
+		case <-h.stopCh:
+			h.closeAllClients()
+			return
 		case req := <-h.register:
 			client := req.client
 			if len(h.clients) >= h.maxClients {
@@ -49,5 +54,13 @@ func (h *Hub) Run() {
 				}
 			}
 		}
+	}
+}
+
+func (h *Hub) Close() { close(h.stopCh) }
+
+func (h *Hub) closeAllClients() {
+	for client := range h.clients {
+		close(client.send)
 	}
 }

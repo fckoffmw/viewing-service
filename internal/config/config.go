@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
@@ -27,6 +28,13 @@ func Load() *Config {
 		LogLevel:                getEnv("LOG_LEVEL", "debug"),
 		SessionsCleanupInterval: getEnvInt("SESSIONS_CLEANUP_INTERVAL", 300),
 	}
+}
+
+func (c *Config) PrettyPrint() string {
+	return fmt.Sprintf(
+		"Port=%s StorageDir=%s MaxClients=%d LogLevel=%s SessionsCleanupInterval=%d",
+		c.Port, c.StorageDir, c.MaxClients, c.LogLevel, c.SessionsCleanupInterval,
+	)
 }
 
 func getEnvInt(key string, fallback int) int {

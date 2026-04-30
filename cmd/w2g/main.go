@@ -1,17 +1,20 @@
 package main
 
 import (
+	"context"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"w2g/internal/auth"
 	"w2g/internal/chat"
 	"w2g/internal/config"
-	"w2g/internal/middleware"
+	router "w2g/internal/http"
 	"w2g/internal/repo"
 	"w2g/internal/room"
 	"w2g/internal/source"
@@ -20,23 +23,11 @@ import (
 var log *slog.Logger
 
 func main() {
-
 	config := config.Load()
-
-	addr := ":" + config.Port
-
-	hub := chat.NewHub(config.MaxClients)
-	go hub.Run()
 
 	initLogger(config.LogLevel)
 
-	log.Info("config",
-		"STORAGE_DIR", config.StorageDir,
-		"PORT", config.Port,
-		"MAX_CLIENTS", config.MaxClients,
-		"LOG_LEVEL", config.LogLevel,
-		"SESSIONS_CLEANUP_INTERVAL", config.SessionsCleanupInterval,
-	)
+	log.Info("config", "config", config.PrettyPrint())
 
 	csvStorage, err := repo.NewCSVStorage(config.StorageDir)
 	if err != nil {
@@ -44,9 +35,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	sessionStore := auth.NewSessionStore(time.Duration(config.SessionsCleanupInterval) * time.Second)
+	sessionStore := auth.NewSessionStore(
+		time.Duration(config.SessionsCleanupInterval) * time.Second,
+	)
 	go sessionStore.CleanupLoop()
-	defer sessionStore.Stop()
 
 	sourceService := source.NewService(csvStorage)
 	sourceHandler := source.NewHandler(sourceService, log)
@@ -57,48 +49,51 @@ func main() {
 	roomService := room.NewService(csvStorage)
 	roomHandler := room.NewHandler(roomService, log)
 
-	mux := http.NewServeMux()
+	hub := chat.NewHub(config.MaxClients)
+	go hub.Run()
 
-	mux.Handle("/", http.FileServer(http.Dir("web")))
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
-	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		chat.ServeWS(log, hub, w, r)
-	})
-	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
-	})
+	r := router.NewRouter(log, hub, authService, authHandler, sourceHandler, roomHandler)
 
-	// public API (no auth required)
-	mux.HandleFunc("POST /auth/login", authHandler.Login)
-	mux.HandleFunc("POST /auth/register", authHandler.Register)
-	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
-	mux.HandleFunc("GET /auth/me", authHandler.Me)
-
-	// protected API (auth required)
-	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)
-	mux.HandleFunc("POST /api/sources", sourceHandler.AddSource)
-	mux.HandleFunc("GET /api/room", roomHandler.GetGlobalRoom)
-	mux.HandleFunc("PATCH /api/room/source", roomHandler.PatchGlobalRoomSource)
+	r.UseLoggingMiddleware()
+	r.UseAuthMiddleware(sessionStore)
 
 	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
 		log.Error("web/index.html not found", "error", err)
 	}
 
-	wrappedMux := middleware.Logging(log, mux)
-	wrappedMux = middleware.Auth(log, sessionStore, wrappedMux)
-
 	server := &http.Server{
-		Addr:    addr,
-		Handler: wrappedMux,
+		Addr:    ":" + config.Port,
+		Handler: r.Handler,
 	}
 
-	log.Info("w2g server listening", "port", addr)
-	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Error("server error", "err", err)
-	}
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
-	log.Info("w2g server stopped")
+	go func() {
+		log.Info("w2g server listening", "port", server.Addr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error("server error", "err", err)
+		}
+	}()
+
+	<-sigCh
+
+	shutdownTimeout := 30 * time.Second
+	log.Info("shutting down...", "timeout", shutdownTimeout)
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	log.Info("stopping HTTP server...")
+	server.Shutdown(ctx)
+
+	log.Info("stopping session cleanup...")
+	sessionStore.Stop()
+
+	log.Info("stopping chat hub...")
+	hub.Close()
+
+	log.Info("shutdown complete")
 }
 
 func initLogger(level string) {

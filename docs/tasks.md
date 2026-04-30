@@ -8,14 +8,13 @@
 - [ ] sync
   - [ ] ws взаимодействие
   - [ ] nats
-- [ ] auth
-  - [ ] logout-all endpoints
-  - [ ] аватарки
-  - [ ] deploy script
+- [ ] много комнат
 - [ ] разделение источников помимо VK
+- [ ] auth more +
 
 ### DONE
 
+- [x] auth
 - [x] config
 - [x] logging
 - [x] CSV storage layer с тестами

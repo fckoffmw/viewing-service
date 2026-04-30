@@ -353,32 +353,32 @@ func rowsTo[T any](rows [][]string) ([]T, error) {
 				continue
 			}
 
-switch f.Kind() {
-		case reflect.String:
-			f.SetString(row[i])
-		case reflect.Int, reflect.Int64:
-			num, err := strconv.ParseInt(row[i], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-
-			f.SetInt(num)
-		case reflect.Float64:
-			num, err := strconv.ParseFloat(row[i], 64)
-			if err != nil {
-				return nil, err
-			}
-
-			f.SetFloat(num)
-		case reflect.Struct:
-			if f.Type() == reflect.TypeOf(time.Time{}) {
-				t, err := time.Parse(time.RFC3339, row[i])
+			switch f.Kind() {
+			case reflect.String:
+				f.SetString(row[i])
+			case reflect.Int, reflect.Int64:
+				num, err := strconv.ParseInt(row[i], 10, 64)
 				if err != nil {
 					return nil, err
 				}
-				f.Set(reflect.ValueOf(t))
+
+				f.SetInt(num)
+			case reflect.Float64:
+				num, err := strconv.ParseFloat(row[i], 64)
+				if err != nil {
+					return nil, err
+				}
+
+				f.SetFloat(num)
+			case reflect.Struct:
+				if f.Type() == reflect.TypeOf(time.Time{}) {
+					t, err := time.Parse(time.RFC3339, row[i])
+					if err != nil {
+						return nil, err
+					}
+					f.Set(reflect.ValueOf(t))
+				}
 			}
-		}
 
 		}
 

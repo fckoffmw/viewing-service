@@ -14,6 +14,8 @@ import (
 	"github.com/google/uuid"
 )
 
+type Middleware func(http.Handler, ...any) http.Handler
+
 func writeUnauthorized(w http.ResponseWriter, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
@@ -25,22 +27,22 @@ type SessionStore interface {
 	Set(session *auth.Session)
 }
 
-func Auth(log *slog.Logger, sessionStore SessionStore, next http.Handler) http.Handler {
+func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-// Public routes - skip auth
+		// Public routes - skip auth
 		publicPaths := map[string]bool{
-			"/":                  true,
-			"/index.html":          true,
-			"/login.html":        true,
-			"/register.html":     true,
-			"/login":           true,
-			"/register":        true,
-			"/auth/login":     true,
-			"/auth/register":   true,
-			"/auth/logout":     true,
-			"/auth/me":         true,
-			"/healthz":         true,
-			"/ws":             true,
+			"/":              true,
+			"/index.html":    true,
+			"/login.html":    true,
+			"/register.html": true,
+			"/login":         true,
+			"/register":      true,
+			"/auth/login":    true,
+			"/auth/register": true,
+			"/auth/logout":   true,
+			"/auth/me":       true,
+			"/healthz":       true,
+			"/ws":            true,
 		}
 		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/demo/") {
 			next.ServeHTTP(w, r)

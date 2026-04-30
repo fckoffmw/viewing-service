@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"w2g/internal/auth"
 )
 
 const (
@@ -27,17 +28,36 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	hub  *Hub
-	conn *websocket.Conn
-	send chan []byte
+	hub      *Hub
+	conn     *websocket.Conn
+	send     chan []byte
+	username string
 }
 
 type chatMessage struct {
-	ClientID string `json:"clientId"`
+	Username string `json:"username"`
 	Text     string `json:"text"`
 }
 
-func ServeWS(log *slog.Logger, hub *Hub, w http.ResponseWriter, r *http.Request) {
+type AuthService interface {
+	GetUserBySession(sessionID string) (*auth.User, error)
+}
+
+func ServeWS(log *slog.Logger, hub *Hub, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_id")
+	if err != nil {
+		log.Debug("ws: no session cookie")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := authSvc.GetUserBySession(cookie.Value)
+	if err != nil || user == nil {
+		log.Debug("ws: invalid session")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error("upgrade", "err", err)
@@ -45,9 +65,10 @@ func ServeWS(log *slog.Logger, hub *Hub, w http.ResponseWriter, r *http.Request)
 	}
 
 	client := &Client{
-		hub:  hub,
-		conn: conn,
-		send: make(chan []byte, 64),
+		hub:      hub,
+		conn:     conn,
+		send:     make(chan []byte, 64),
+		username: user.Username,
 	}
 	accepted := make(chan bool, 1)
 	client.hub.register <- registerRequest{client: client, accepted: accepted}
@@ -93,7 +114,12 @@ func (c *Client) readPump() {
 		if payload.Text == "" || len(payload.Text) > maxTextLen {
 			continue
 		}
-		normalized, err := json.Marshal(payload)
+
+		msg := chatMessage{
+			Username: c.username,
+			Text:     payload.Text,
+		}
+		normalized, err := json.Marshal(msg)
 		if err != nil {
 			continue
 		}
