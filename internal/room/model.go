@@ -1,8 +1,11 @@
 package room
 
 type Room struct {
-	ID       string
-	SourceID string
+	ID          string
+	Name       string
+	OwnerID    string
+	InviteCode string
+	CreatedAt  string
 }
 
 func (r Room) GetID() string {

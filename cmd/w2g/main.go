@@ -34,6 +34,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	roomStore, err := room.NewStore(csvStorage)
+	if err != nil {
+		log.Error("when creating room store", "error", err)
+		os.Exit(1)
+	}
+
 	sessionStore := auth.NewSessionStore(
 		time.Duration(config.SessionsCleanupInterval) * time.Second,
 	)
@@ -45,13 +51,14 @@ func main() {
 	authService := auth.NewService(csvStorage, sessionStore)
 	authHandler := auth.NewHandler(authService, log)
 
-	roomService := room.NewService(csvStorage)
-	roomHandler := room.NewHandler(roomService, log)
+	roomService := room.NewService(roomStore, config.MaxRoomsPerUser)
+	roomHubManager := chat.NewHubManager()
+	roomHandler := room.NewHandler(roomService, roomHubManager, csvStorage, log)
 
 	hub := chat.NewHub(config.MaxClients)
 	go hub.Run()
 
-	r := router.NewRouter(log, hub, authService, authHandler, sourceHandler, roomHandler)
+	r := router.NewRouter(log, hub, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
 
 	r.UseLoggingMiddleware()
 	r.UseAuthMiddleware(sessionStore)

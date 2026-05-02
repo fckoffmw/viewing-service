@@ -5,11 +5,13 @@
 ```
 cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ middleware.Auth ──→ Routes
                                                                               │
-                                                                              ├── Static (web/, /static/)
                                                                               ├── WebSocket (/ws)
                                                                               ├── Auth API (/auth/*) - public
+                                                                              ├── Health (/healthz) - public
                                                                               └── API (/api/*) - protected
 ```
+
+Статика (HTML, CSS, JS) раздается через nginx.
 
 ## Пакеты
 
@@ -35,7 +37,7 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 
 ### auth
 Аутентификация:
-- Пропускает публичные маршруты: `/`, `/login.html`, `/register.html`, `/auth/*`, `/healthz`, `/ws`, `/static/*`
+- Пропускает публичные маршруты: `/auth/*`, `/healthz`, `/ws/*`
 - Для защищённых маршрутов проверяет `session_id` cookie
 - Sliding expiry: обновляет `ExpiresAt` при каждом запросе
 
@@ -45,8 +47,8 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 Client ──→ readPump ──→ hub.broadcast ──→ writePump ──→ Client
 ```
 
-- Max 2 клиента
-- Hub — одна goroutine с channel dispatch
+- HubManager — управляет RoomHub-ами по invite_code
+- RoomHub — одна goroutine с channel dispatch
 - Keepalive: ping/pong каждые 54с
 
 ## Хранение
@@ -64,15 +66,11 @@ Thread-safe через `sync.RWMutex`.
 
 | Метод | Путь | Обработчик |
 |-------|------|----------|
-| GET | `/` | Static (web/index.html) |
-| GET | `/login.html` | Static |
-| GET | `/register.html` | Static |
 | GET | `/healthz` | Health check |
 | POST | `/auth/register` | auth.Register |
 | POST | `/auth/login` | auth.Login |
 | POST | `/auth/logout` | auth.Logout |
 | GET | `/auth/me` | auth.Me |
-| GET | `/ws` | WebSocket чат |
 
 ### Защищённые
 
@@ -80,8 +78,16 @@ Thread-safe через `sync.RWMutex`.
 |-------|------|----------|
 | GET | `/api/sources` | source.GetAllSources |
 | POST | `/api/sources` | source.AddSource |
-| GET | `/api/room` | room.GetGlobalRoom |
-| PATCH | `/api/room/source` | room.PatchGlobalRoomSource |
+| POST | `/api/rooms` | room.CreateRoom |
+| GET | `/api/rooms/{invite_code}` | room.GetRoom |
+| DELETE | `/api/rooms/{invite_code}` | room.DeleteRoom |
+| PATCH | `/api/rooms/{invite_code}/source` | room.PatchRoomSource |
+
+### WebSocket
+
+| Метод | Путь | Обработчик |
+|-------|------|----------|
+| GET | `/ws/{invite_code}` | chat.ServeWS |
 
 ## Зависимости
 

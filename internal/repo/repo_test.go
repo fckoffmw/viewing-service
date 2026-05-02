@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"w2g/internal/auth"
+	"w2g/internal/room"
 )
 
 type testRow struct {
@@ -238,87 +239,112 @@ func TestGetSourceById(t *testing.T) {
 	})
 }
 
-func TestGetGlobalRoom(t *testing.T) {
+func TestGetAllRooms(t *testing.T) {
 	storage := setupTestStorage(t, map[string]string{
 		"sources.csv": "id,name,url\n",
-		"rooms.csv":   "id,source_id\n1,5\n",
+		"rooms.csv":   "id,name,owner_id,invite_code,created_at\n1,Test,user1,ABCD1234,2025-01-01T00:00:00Z\n",
 	})
 
-	room, err := storage.GetGlobalRoom()
+	rooms, err := storage.GetAllRooms()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if room.ID != "1" {
-		t.Errorf("expected room ID=1, got %s", room.ID)
+	if len(rooms) != 1 {
+		t.Errorf("expected 1 room, got %d", len(rooms))
 	}
-	if room.SourceID != "5" {
-		t.Errorf("expected SourceID=5, got %s", room.SourceID)
+	if rooms[0].ID != "1" {
+		t.Errorf("expected room ID=1, got %s", rooms[0].ID)
+	}
+	if rooms[0].Name != "Test" {
+		t.Errorf("expected name=Test, got %s", rooms[0].Name)
 	}
 }
 
-func TestGetGlobalRoom_NotFound(t *testing.T) {
+func TestAddRoom(t *testing.T) {
 	storage := setupTestStorage(t, map[string]string{
 		"sources.csv": "id,name,url\n",
-		"rooms.csv":   "id,source_id\n",
+		"rooms.csv":   "id,name,owner_id,invite_code,created_at\n1,First,user1,ABCD1234,2025-01-01T00:00:00Z\n",
 	})
 
-	_, err := storage.GetGlobalRoom()
-	if err == nil {
-		t.Fatal("expected error for empty rooms, got nil")
+	room := room.Room{
+		Name:       "Second",
+		OwnerID:    "user2",
+		InviteCode:  "EFGH5678",
+		CreatedAt: "2025-01-02T00:00:00Z",
 	}
-}
 
-func TestGetRoomByID(t *testing.T) {
-	storage := setupTestStorage(t, map[string]string{
-		"rooms.csv": "id,source_id\n1,5\n2,10\n",
-	})
-
-	t.Run("found", func(t *testing.T) {
-		r, err := storage.GetRoomByID("2")
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if r.SourceID != "10" {
-			t.Errorf("expected SourceID=10, got %s", r.SourceID)
-		}
-	})
-
-	t.Run("not found", func(t *testing.T) {
-		_, err := storage.GetRoomByID("999")
-		if err == nil {
-			t.Fatal("expected error, got nil")
-		}
-	})
-}
-
-func TestUpdateGlobalRoomSource(t *testing.T) {
-	storage := setupTestStorage(t, map[string]string{
-		"sources.csv": "id,name,url\n",
-		"rooms.csv":   "id,source_id\n1,5\n",
-	})
-
-	id, err := storage.UpdateGlobalRoomSource("99")
+	id, err := storage.AddRoom(room)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if id != "99" {
-		t.Errorf("expected returned id=99, got %s", id)
+	if id != "1" {
+		t.Errorf("expected id=1, got %s", id)
 	}
 
-	// проверяем что файл обновился
-	room, err := storage.GetGlobalRoom()
+	rooms, err := storage.GetAllRooms()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if room.SourceID != "99" {
-		t.Errorf("expected SourceID=99, got %s", room.SourceID)
+	if len(rooms) != 2 {
+		t.Errorf("expected 2 rooms, got %d", len(rooms))
+	}
+}
+
+func TestUpdateRoom(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,name,owner_id,invite_code,created_at\n1,OldName,user1,ABCD1234,2025-01-01T00:00:00Z\n",
+	})
+
+	room := room.Room{
+		ID:         "1",
+		Name:       "NewName",
+		OwnerID:    "user1",
+		InviteCode: "ABCD1234",
+		CreatedAt: "2025-01-01T00:00:00Z",
+	}
+
+	err := storage.UpdateRoom(room)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	rooms, err := storage.GetAllRooms()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rooms[0].Name != "NewName" {
+		t.Errorf("expected name=NewName, got %s", rooms[0].Name)
+	}
+}
+
+func TestDeleteRoom(t *testing.T) {
+	storage := setupTestStorage(t, map[string]string{
+		"sources.csv": "id,name,url\n",
+		"rooms.csv":   "id,name,owner_id,invite_code,created_at\n1,First,user1,ABCD1234,2025-01-01T00:00:00Z\n2,Second,user2,EFGH5678,2025-01-02T00:00:00Z\n",
+	})
+
+	err := storage.DeleteRoom("1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	rooms, err := storage.GetAllRooms()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(rooms) != 1 {
+		t.Errorf("expected 1 room, got %d", len(rooms))
+	}
+	if rooms[0].ID != "2" {
+		t.Errorf("expected remaining room ID=2, got %s", rooms[0].ID)
 	}
 }
 
 func TestGetUserByUsername(t *testing.T) {
 	storage := setupTestStorage(t, map[string]string{
-		"users.csv":  "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n2,bob,$2a$12$hash2," + time.Now().Add(time.Hour).Format(time.RFC3339) + "\n",
+		"users.csv":   "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n2,bob,$2a$12$hash2," + time.Now().Add(time.Hour).Format(time.RFC3339) + "\n",
 		"sources.csv": "id,name,url\n",
 		"rooms.csv":   "id,source_id\n1,1\n",
 	})
@@ -349,7 +375,7 @@ func TestGetUserByUsername(t *testing.T) {
 
 func TestAddUser(t *testing.T) {
 	storage := setupTestStorage(t, map[string]string{
-		"users.csv":  "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n",
+		"users.csv":   "id,username,password_hash,created_at\n1,alice,$2a$12$hash," + time.Now().Format(time.RFC3339) + "\n",
 		"sources.csv": "id,name,url\n",
 		"rooms.csv":   "id,source_id\n1,1\n",
 	})

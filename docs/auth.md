@@ -110,12 +110,6 @@ curl -s -X POST http://localhost:8080/auth/login \
 ```
 Ответ: `401` + `{"error":"invalid credentials"}`
 
-Публичная страница:
-```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login.html
-```
-Ответ: `200`
-
 ## Зависимости
 
 ```

@@ -28,10 +28,11 @@ var upgrader = websocket.Upgrader{
 }
 
 type Client struct {
-	hub      *Hub
+	hub      *RoomHub
 	conn     *websocket.Conn
 	send     chan []byte
 	username string
+	userID   string
 }
 
 type chatMessage struct {
@@ -43,7 +44,11 @@ type AuthService interface {
 	GetUserBySession(sessionID string) (*auth.User, error)
 }
 
-func ServeWS(log *slog.Logger, hub *Hub, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
+type HubManagerGetter interface {
+	GetOrCreate(roomID string) *RoomHub
+}
+
+func ServeWS(log *slog.Logger, hubManager HubManagerGetter, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		log.Debug("ws: no session cookie")
@@ -58,29 +63,29 @@ func ServeWS(log *slog.Logger, hub *Hub, authSvc AuthService, w http.ResponseWri
 		return
 	}
 
+	inviteCode := extractInviteCode(r)
+	if inviteCode == "" {
+		http.Error(w, "invite code required", http.StatusBadRequest)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Error("upgrade", "err", err)
 		return
 	}
 
+	roomHub := hubManager.GetOrCreate(inviteCode)
+
 	client := &Client{
-		hub:      hub,
+		hub:      roomHub,
 		conn:     conn,
 		send:     make(chan []byte, 64),
 		username: user.Username,
+		userID:   user.ID,
 	}
-	accepted := make(chan bool, 1)
-	client.hub.register <- registerRequest{client: client, accepted: accepted}
-	if !<-accepted {
-		_ = conn.WriteControl(
-			websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "room is full"),
-			time.Now().Add(writeWait),
-		)
-		_ = conn.Close()
-		return
-	}
+
+	roomHub.Register() <- client
 
 	go client.writePump()
 	go client.readPump()
@@ -88,7 +93,7 @@ func ServeWS(log *slog.Logger, hub *Hub, authSvc AuthService, w http.ResponseWri
 
 func (c *Client) readPump() {
 	defer func() {
-		c.hub.unregister <- c
+		c.hub.Unregister() <- c
 		_ = c.conn.Close()
 	}()
 
@@ -123,7 +128,7 @@ func (c *Client) readPump() {
 		if err != nil {
 			continue
 		}
-		c.hub.broadcast <- normalized
+		c.hub.Broadcast() <- normalized
 	}
 }
 
@@ -161,4 +166,14 @@ func (c *Client) writePump() {
 			}
 		}
 	}
+}
+
+func extractInviteCode(r *http.Request) string {
+	path := r.URL.Path
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '/' {
+			return path[i+1:]
+		}
+	}
+	return ""
 }

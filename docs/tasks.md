@@ -4,19 +4,32 @@
 
 ### TODO
 
-- [ ] simple deploy
-- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
-- [ ] graceful shutdown для Hub
-- [ ] CORS middleware
+
+- [ ] много комнат
+- [ ] побольше логирования с разделением по уровням
 - [ ] sync
   - [ ] ws взаимодействие
   - [ ] nats
-- [ ] много комнат
 - [ ] разделение источников помимо VK
+- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
+- [ ] graceful shutdown для Hub
+- [ ] CORS middleware
+- [ ] кеширование
 - [ ] auth more +
+- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
+
+#### rooms feature
+
+- [ ] csv storage в room нужно переименовать в repo
+- [ ] не нравится что id, err := s.csvStorage.AddRoom(*room) указатель разыменовываем (решить надо как передавать структуры в репо)
+- [ ] перенести GetAllRooms AddRoom UpdateRoom DeleteRoom выше чем локальные методы
+- [ ] не делать составные имена по типу hub_manager
+- [ ] дублрирование extractInviteCode убрать
+- [ ] убрать логику старого хаба
 
 ### DONE
 
+- [x] simple deploy
 - [x] разгрузить main
 - [x] auth
 - [x] config

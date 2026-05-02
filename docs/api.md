@@ -119,30 +119,63 @@
 
 ---
 
-## Комната
+## Комнаты
 
-### GET /api/room
+### POST /api/rooms
 
-Информация о глобальной комнате. Защищённый endpoint.
+Создать комнату. Защищённый endpoint.
 
-**Response 200:**
+**Request:**
+```json
+{"name": "Movie Night"}
+```
+
+**Response 201:**
 ```json
 {
   "id": "1",
-  "name": "global",
-  "current_source": {
-    "id": "1",
-    "name": "Семь (1995)",
-    "url": "https://vkvideo.ru/..."
-  }
+  "name": "Movie Night",
+  "invite_code": "X7K2PQ4M",
+  "invite_url": "/room/X7K2PQ4M",
+  "owner_id": "1",
+  "created_at": "2025-01-01T00:00:00Z"
 }
 ```
 
 ---
 
-### PATCH /api/room/source
+### GET /api/rooms/{invite_code}
 
-Установить активный источник. Защищённый endpoint.
+Информация о комнате. Защищённый endpoint.
+
+**Response 200:**
+```json
+{
+  "id": "1",
+  "name": "Movie Night",
+  "invite_code": "X7K2PQ4M",
+  "owner_id": "1",
+  "members_online": 0,
+  "created_at": "2025-01-01T00:00:00Z"
+}
+```
+
+---
+
+### DELETE /api/rooms/{invite_code}
+
+Удалить комнату. Только owner. Защищённый endpoint.
+
+**Response 200:**
+```json
+{"status": "deleted"}
+```
+
+---
+
+### PATCH /api/rooms/{invite_code}/source
+
+Установить активный источник. Только owner. Защищённый endpoint.
 
 **Request:**
 ```json
@@ -151,16 +184,16 @@
 
 **Response 200:**
 ```json
-{"id": "1"}
+{"source_id": "1"}
 ```
 
 ---
 
 ## WebSocket
 
-### GET /ws
+### GET /ws/{invite_code}
 
-Чат. Публичный endpoint.
+Чат комнаты. Защищённый endpoint (требует session_id cookie).
 
 **Сообщение:**
 ```json

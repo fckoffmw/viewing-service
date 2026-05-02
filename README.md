@@ -16,10 +16,10 @@
 ## Текущее состояние
 
 - Аутентификация: register, login, logout, /auth/me
-- Страницы: index, room, content, login, register
-- Чат: WebSocket (max 2 клиента)
+- REST API: sources, rooms (мультикомнаты)
+- WebSocket чат: /ws/{invite_code}
 - Источники: CRUD через API
-- Комната: одна глобальная
+- Комнаты: несколько комнат с invite-кодами
 
 ## Быстрый старт
 
@@ -28,5 +28,11 @@ go run ./cmd/w2g
 ```
 
 Сервис доступен на `http://localhost:8080`
+
+## Деплой
+
+```bash
+sudo ./deploy.sh --default true
+```
 
 Документация: [docs/run.md](docs/run.md)
