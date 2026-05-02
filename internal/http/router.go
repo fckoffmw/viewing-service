@@ -39,8 +39,6 @@ func NewRouter(
 ) *router {
 	mux := http.NewServeMux()
 
-	mux.Handle("/", http.FileServer(http.Dir("web")))
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		chat.ServeWS(log, hub, authService, w, r)
 	})

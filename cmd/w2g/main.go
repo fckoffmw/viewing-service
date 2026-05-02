@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -56,10 +55,6 @@ func main() {
 
 	r.UseLoggingMiddleware()
 	r.UseAuthMiddleware(sessionStore)
-
-	if _, err := fs.Stat(os.DirFS("."), "web/index.html"); err != nil {
-		log.Error("web/index.html not found", "error", err)
-	}
 
 	server := &http.Server{
 		Addr:    ":" + config.Port,
