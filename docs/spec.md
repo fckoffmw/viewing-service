@@ -13,7 +13,7 @@
 
 | Компонент | Технология |
 |-----------|------------|
-| Backend | Go |
+| Backend | Go 1.26+ |
 | Frontend | HTML, CSS, JS (vanilla) |
 | Хранилище | CSV файлы |
 | Сессии | in-memory |

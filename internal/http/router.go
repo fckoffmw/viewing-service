@@ -35,12 +35,11 @@ type router struct {
 
 func NewRouter(
 	log *slog.Logger,
-	hub *chat.Hub,
 	authService auth.Service,
 	authHandler authHandler,
 	sourceHandler sourceHandler,
 	roomHandler roomHandler,
-	hubManager *chat.HubManager,
+	hubManager chat.HubGetter,
 ) *router {
 	mux := http.NewServeMux()
 

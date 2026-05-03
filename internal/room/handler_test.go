@@ -10,6 +10,7 @@ import (
 
 	"log/slog"
 
+	httputils "w2g/internal/http"
 	"w2g/internal/source"
 )
 
@@ -326,7 +327,7 @@ func TestExtractInviteCode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			got := extractInviteCode(r)
+			got := httputils.ExtractInviteCode(r)
 			if got != tt.want {
 				t.Errorf("got = %q, want %q", got, tt.want)
 			}

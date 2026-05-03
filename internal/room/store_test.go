@@ -20,11 +20,11 @@ func (m *mockCSVStorage) GetAllRooms() ([]Room, error) {
 	return m.rooms, nil
 }
 
-func (m *mockCSVStorage) AddRoom(r Room) (string, error) {
+func (m *mockCSVStorage) AddRoom(r *Room) (string, error) {
 	if m.addErr != nil {
 		return "", m.addErr
 	}
-	m.rooms = append(m.rooms, r)
+	m.rooms = append(m.rooms, *r)
 	return r.ID, nil
 }
 
@@ -95,11 +95,11 @@ func TestNewStore(t *testing.T) {
 }
 
 func TestStoreGetByInviteCode(t *testing.T) {
-	store := &Store{
+	store := &store{
 		rooms: map[string]*Room{
 			"ABCD1234": {ID: "1", Name: "Test", InviteCode: "ABCD1234"},
 		},
-		csvStorage: nil,
+		storage: nil,
 	}
 
 	tests := []struct {
@@ -143,11 +143,11 @@ func TestStoreGetByInviteCode(t *testing.T) {
 }
 
 func TestStoreGetByID(t *testing.T) {
-	store := &Store{
+	store := &store{
 		rooms: map[string]*Room{
 			"ABCD1234": {ID: "1", Name: "Test", InviteCode: "ABCD1234"},
 		},
-		csvStorage: nil,
+		storage: nil,
 	}
 
 	tests := []struct {
@@ -191,13 +191,13 @@ func TestStoreGetByID(t *testing.T) {
 }
 
 func TestStoreGetByOwnerID(t *testing.T) {
-	store := &Store{
+	store := &store{
 		rooms: map[string]*Room{
 			"A": {ID: "1", OwnerID: "user1", InviteCode: "A"},
 			"B": {ID: "2", OwnerID: "user1", InviteCode: "B"},
 			"C": {ID: "3", OwnerID: "user2", InviteCode: "C"},
 		},
-		csvStorage: nil,
+		storage: nil,
 	}
 
 	tests := []struct {
@@ -237,11 +237,11 @@ func TestStoreGetByOwnerID(t *testing.T) {
 
 func TestStoreDelete(t *testing.T) {
 	csv := &mockCSVStorage{}
-	store := &Store{
+	store := &store{
 		rooms: map[string]*Room{
 			"ABCD1234": {ID: "1", InviteCode: "ABCD1234"},
 		},
-		csvStorage: csv,
+		storage: csv,
 	}
 
 	tests := []struct {
@@ -294,13 +294,13 @@ func TestStoreDelete(t *testing.T) {
 }
 
 func TestStoreCountByOwnerID(t *testing.T) {
-	store := &Store{
+	store := &store{
 		rooms: map[string]*Room{
 			"A": {ID: "1", OwnerID: "user1", InviteCode: "A"},
 			"B": {ID: "2", OwnerID: "user1", InviteCode: "B"},
 			"C": {ID: "3", OwnerID: "user2", InviteCode: "C"},
 		},
-		csvStorage: nil,
+		storage: nil,
 	}
 
 	tests := []struct {

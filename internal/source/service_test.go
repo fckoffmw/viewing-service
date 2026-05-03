@@ -21,14 +21,14 @@ func (m *mockRepo) GetAllSources() ([]Source, error) {
 	return m.sources, nil
 }
 
-func (m *mockRepo) AddSource(s Source) (string, error) {
+func (m *mockRepo) AddSource(s *Source) (string, error) {
 	if m.err != nil {
 		return "", m.err
 	}
 	m.nextID++
 	id := strconv.Itoa(m.nextID)
 	s.ID = id
-	m.sources = append(m.sources, s)
+	m.sources = append(m.sources, *s)
 	return id, nil
 }
 

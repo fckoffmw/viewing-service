@@ -27,7 +27,7 @@ func (m *mockRepo) GetUserByID(id string) (*User, error) {
 	return m.user, nil
 }
 
-func (m *mockRepo) AddUser(user User) (string, error) {
+func (m *mockRepo) AddUser(user *User) (string, error) {
 	if m.err != nil {
 		return "", m.err
 	}

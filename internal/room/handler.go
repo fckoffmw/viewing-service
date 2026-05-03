@@ -5,8 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 
+	httputils "w2g/internal/http"
 	"w2g/internal/response"
 	"w2g/internal/source"
 )
@@ -117,7 +117,7 @@ func (h handler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 
 func (h handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
-	inviteCode := extractInviteCode(r)
+	inviteCode := httputils.ExtractInviteCode(r)
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -141,7 +141,7 @@ func (h handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 func (h handler) DeleteRoom(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 	userID, _ := r.Context().Value("user_id").(string)
-	inviteCode := extractInviteCode(r)
+	inviteCode := httputils.ExtractInviteCode(r)
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -169,7 +169,7 @@ func (h handler) DeleteRoom(w http.ResponseWriter, r *http.Request) {
 func (h handler) PatchRoomSource(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 	userID, _ := r.Context().Value("user_id").(string)
-	inviteCode := extractInviteCode(r)
+	inviteCode := httputils.ExtractInviteCode(r)
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -202,22 +202,4 @@ func (h handler) PatchRoomSource(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("source changed", "request_id", requestID, "room_id", room.ID, "source_id", req.SourceID)
 
 	response.WriteOK(w, PatchSourceResponse{SourceID: req.SourceID})
-}
-
-func extractInviteCode(r *http.Request) string {
-	// Try to get from URL path value first (works for patterns like /api/rooms/{invite_code})
-	if inviteCode := r.PathValue("invite_code"); inviteCode != "" {
-		return inviteCode
-	}
-	
-	// Fallback: extract from path
-	// For /api/rooms/INVITE_CODE/source -> extract INVITE_CODE (2nd from end)
-	// For /api/rooms/INVITE_CODE -> extract INVITE_CODE (last)
-	parts := strings.Split(strings.TrimPrefix(r.URL.Path, "/api/rooms/"), "/")
-	if len(parts) >= 1 && parts[0] != "" {
-		// parts[0] = invite_code, or invite_code/source
-		inviteCode := strings.Split(parts[0], "/")[0]
-		return inviteCode
-	}
-	return ""
 }

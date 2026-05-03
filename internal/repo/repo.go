@@ -20,7 +20,7 @@ import (
 var (
 	usersTable   = "users"
 	sourcesTable = "sources"
-	roomsTable  = "rooms"
+	roomsTable   = "rooms"
 
 	usersUnit = dataUnit{
 		filename: usersTable + ".csv",
@@ -185,7 +185,7 @@ func (s *csvStorage) GetSourceById(id string) (*source.Source, error) {
 	return getByIDFrom[source.Source](id, s.basePath+filename)
 }
 
-func (s *csvStorage) AddSource(source source.Source) (string, error) {
+func (s *csvStorage) AddSource(source *source.Source) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -214,7 +214,7 @@ func (s *csvStorage) AddSource(source source.Source) (string, error) {
 	return id, nil
 }
 
-func (s *csvStorage) AddUser(user auth.User) (string, error) {
+func (s *csvStorage) AddUser(user *auth.User) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -247,6 +247,96 @@ func (s *csvStorage) AddUser(user auth.User) (string, error) {
 	s.dataStruct[usersTable].lastID += 1
 
 	return id, nil
+}
+
+func (s *csvStorage) GetAllRooms() ([]room.Room, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	filename := s.dataStruct[roomsTable].filename
+
+	rows, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return nil, fmt.Errorf("when read file %s: %w", filename, err)
+	}
+
+	rooms, err := rowsTo[room.Room](rows)
+	if err != nil {
+		return nil, fmt.Errorf("when convert csv rows to room struct: %w", err)
+	}
+
+	return rooms, nil
+}
+
+func (s *csvStorage) AddRoom(r *room.Room) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[roomsTable].filename
+	newID := s.getNewRoomID()
+
+	row := []string{newID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
+
+	records, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return "", err
+	}
+
+	if len(records) == 0 {
+		records = append(records, s.dataStruct[roomsTable].fields)
+	}
+
+	records = append(records, row)
+
+	if err := writeAllToFile(s.basePath+filename, records); err != nil {
+		return "", err
+	}
+
+	s.dataStruct[roomsTable].lastID++
+
+	return newID, nil
+}
+
+func (s *csvStorage) UpdateRoom(r room.Room) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[roomsTable].filename
+
+	records, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return err
+	}
+
+	for i, record := range records {
+		if i > 0 && len(record) > 0 && record[0] == r.ID {
+			records[i] = []string{r.ID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
+			break
+		}
+	}
+
+	return writeAllToFile(s.basePath+filename, records)
+}
+
+func (s *csvStorage) DeleteRoom(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[roomsTable].filename
+
+	records, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return err
+	}
+
+	var newRecords [][]string
+	for i, record := range records {
+		if i == 0 || (len(record) > 0 && record[0] != id) {
+			newRecords = append(newRecords, record)
+		}
+	}
+
+	return writeAllToFile(s.basePath+filename, newRecords)
 }
 
 func countLinesWithoutHeader(path string) (int, error) {
@@ -373,96 +463,6 @@ func getByIDFrom[T hasID](id, path string) (*T, error) {
 	}
 
 	return nil, fmt.Errorf("item with id %s not found", id)
-}
-
-func (s *csvStorage) GetAllRooms() ([]room.Room, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	filename := s.dataStruct[roomsTable].filename
-
-	rows, err := readAllFromFile(s.basePath + filename)
-	if err != nil {
-		return nil, fmt.Errorf("when read file %s: %w", filename, err)
-	}
-
-	rooms, err := rowsTo[room.Room](rows)
-	if err != nil {
-		return nil, fmt.Errorf("when convert csv rows to room struct: %w", err)
-	}
-
-	return rooms, nil
-}
-
-func (s *csvStorage) AddRoom(r room.Room) (string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	filename := s.dataStruct[roomsTable].filename
-	newID := s.getNewRoomID()
-
-	row := []string{newID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
-
-	records, err := readAllFromFile(s.basePath + filename)
-	if err != nil {
-		return "", err
-	}
-
-	if len(records) == 0 {
-		records = append(records, s.dataStruct[roomsTable].fields)
-	}
-
-	records = append(records, row)
-
-	if err := writeAllToFile(s.basePath+filename, records); err != nil {
-		return "", err
-	}
-
-	s.dataStruct[roomsTable].lastID++
-
-	return newID, nil
-}
-
-func (s *csvStorage) UpdateRoom(r room.Room) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	filename := s.dataStruct[roomsTable].filename
-
-	records, err := readAllFromFile(s.basePath + filename)
-	if err != nil {
-		return err
-	}
-
-	for i, record := range records {
-		if i > 0 && len(record) > 0 && record[0] == r.ID {
-			records[i] = []string{r.ID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
-			break
-		}
-	}
-
-	return writeAllToFile(s.basePath+filename, records)
-}
-
-func (s *csvStorage) DeleteRoom(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	filename := s.dataStruct[roomsTable].filename
-
-	records, err := readAllFromFile(s.basePath + filename)
-	if err != nil {
-		return err
-	}
-
-	var newRecords [][]string
-	for i, record := range records {
-		if i == 0 || (len(record) > 0 && record[0] != id) {
-			newRecords = append(newRecords, record)
-		}
-	}
-
-	return writeAllToFile(s.basePath+filename, newRecords)
 }
 
 func (s *csvStorage) getNewRoomID() string {

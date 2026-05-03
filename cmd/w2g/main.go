@@ -55,10 +55,7 @@ func main() {
 	roomHubManager := chat.NewHubManager()
 	roomHandler := room.NewHandler(roomService, roomHubManager, csvStorage, log)
 
-	hub := chat.NewHub(config.MaxClients)
-	go hub.Run()
-
-	r := router.NewRouter(log, hub, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
+	r := router.NewRouter(log, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
 
 	r.UseLoggingMiddleware()
 	r.UseAuthMiddleware(sessionStore)
@@ -91,9 +88,6 @@ func main() {
 
 	log.Info("stopping session cleanup...")
 	sessionStore.Stop()
-
-	log.Info("stopping chat hub...")
-	hub.Close()
 
 	log.Info("shutdown complete")
 }

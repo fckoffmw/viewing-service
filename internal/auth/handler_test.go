@@ -46,11 +46,11 @@ func (r *testRepo) GetUserByID(id string) (*User, error) {
 	return nil, nil
 }
 
-func (r *testRepo) AddUser(user User) (string, error) {
+func (r *testRepo) AddUser(user *User) (string, error) {
 	if r.err != nil {
 		return "", r.err
 	}
-	r.users = append(r.users, user)
+	r.users = append(r.users, *user)
 	return "new-user-id", nil
 }
 

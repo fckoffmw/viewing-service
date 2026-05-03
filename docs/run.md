@@ -18,7 +18,7 @@ docker compose up -d --build
 ## Деплой (systemd + nginx)
 
 ### Требования
-- Go 1.21+
+- Go 1.26+
 - nginx
 - systemd
 

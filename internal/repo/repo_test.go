@@ -274,7 +274,7 @@ func TestAddRoom(t *testing.T) {
 		CreatedAt: "2025-01-02T00:00:00Z",
 	}
 
-	id, err := storage.AddRoom(room)
+	id, err := storage.AddRoom(&room)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -385,7 +385,7 @@ func TestAddUser(t *testing.T) {
 		PasswordHash: "$2a$12$newtesthash",
 	}
 
-	id, err := storage.AddUser(user)
+	id, err := storage.AddUser(&user)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

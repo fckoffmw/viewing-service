@@ -2,7 +2,6 @@ package room
 
 import (
 	"errors"
-	"fmt"
 
 	"w2g/internal/source"
 )
@@ -19,16 +18,9 @@ type RoomRepository interface {
 	CountByOwnerID(ownerID string) int
 }
 
-type Service struct {
+type service struct {
 	repo            RoomRepository
 	maxRoomsPerUser int
-}
-
-func NewService(r RoomRepository, maxRoomsPerUser int) *Service {
-	return &Service{
-		repo:            r,
-		maxRoomsPerUser: maxRoomsPerUser,
-	}
 }
 
 type CreateRequest struct {
@@ -45,16 +37,25 @@ type CreateResponse struct {
 }
 
 type GetResponse struct {
-	ID             string        `json:"id"`
-	Name          string       `json:"name"`
-	InviteCode    string       `json:"invite_code"`
-	OwnerID     string       `json:"owner_id"`
-	MembersOnline int          `json:"members_online"`
-	CurrentSource *source.Source `json:"current_source,omitempty"`
-	CreatedAt   string       `json:"created_at"`
+	ID             string          `json:"id"`
+	Name           string          `json:"name"`
+	InviteCode     string          `json:"invite_code"`
+	OwnerID        string          `json:"owner_id"`
+	MembersOnline  int             `json:"members_online"`
+	CurrentSource  *source.Source  `json:"current_source,omitempty"`
+	CreatedAt      string          `json:"created_at"`
 }
 
-func (s *Service) Create(req CreateRequest, ownerID string) (*CreateResponse, error) {
+var currentSourceID = make(map[string]string)
+
+func NewService(r RoomRepository, maxRoomsPerUser int) *service {
+	return &service{
+		repo:            r,
+		maxRoomsPerUser: maxRoomsPerUser,
+	}
+}
+
+func (s *service) Create(req CreateRequest, ownerID string) (*CreateResponse, error) {
 	if s.maxRoomsPerUser > 0 && s.repo.CountByOwnerID(ownerID) >= s.maxRoomsPerUser {
 		return nil, ErrMaxRoomsReached
 	}
@@ -78,7 +79,7 @@ func (s *Service) Create(req CreateRequest, ownerID string) (*CreateResponse, er
 	}, nil
 }
 
-func (s *Service) GetByInviteCode(inviteCode string) (*GetResponse, error) {
+func (s *service) GetByInviteCode(inviteCode string) (*GetResponse, error) {
 	room, err := s.repo.GetByInviteCode(inviteCode)
 	if err != nil {
 		return nil, err
@@ -94,7 +95,7 @@ func (s *Service) GetByInviteCode(inviteCode string) (*GetResponse, error) {
 	}, nil
 }
 
-func (s *Service) Delete(inviteCode string, userID string) error {
+func (s *service) Delete(inviteCode string, userID string) error {
 	room, err := s.repo.GetByInviteCode(inviteCode)
 	if err != nil {
 		return err
@@ -107,22 +108,18 @@ func (s *Service) Delete(inviteCode string, userID string) error {
 	return s.repo.Delete(inviteCode)
 }
 
-func (s *Service) GetRoomByID(id string) (*Room, error) {
+func (s *service) GetRoomByID(id string) (*Room, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *Service) GetRepo() RoomRepository {
+func (s *service) GetRepo() RoomRepository {
 	return s.repo
 }
 
-var currentSourceID = make(map[string]string)
-
-func (s *Service) GetCurrentSourceID(roomID string) string {
+func (s *service) GetCurrentSourceID(roomID string) string {
 	return currentSourceID[roomID]
 }
 
-func (s *Service) SetCurrentSourceID(roomID, sourceID string) {
+func (s *service) SetCurrentSourceID(roomID, sourceID string) {
 	currentSourceID[roomID] = sourceID
 }
-
-var _ = fmt.Errorf

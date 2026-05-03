@@ -4,3 +4,4 @@ storage/
 *.log
 *.md
 .env*
+opencode.jsonc

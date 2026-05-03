@@ -4,7 +4,16 @@
 
 ### TODO
 
-
+- [ ] review
+  - [ ] CRITICAL: убрать глобальную map currentSourceID (room/service.go:49)
+  - [ ] CRITICAL: добавить файловую блокировку для CSV
+  - [ ] CRITICAL: добавить graceful shutdown для Hub
+  - [ ] CRITICAL: валидация Source URL
+  - [ ] важно: sessions persistence (сейчас in-memory)
+  - [ ] важно: добавить rate limiting
+  - [ ] важно: добавить ReadTimeout/WriteTimeout для http.Server
+  - [ ] важно: использовать filepath.Join для путей
+  - [ ] важно: добавить CORS middleware
 - [ ] много комнат
 - [ ] побольше логирования с разделением по уровням
 - [ ] sync
@@ -12,20 +21,8 @@
   - [ ] nats
 - [ ] разделение источников помимо VK
 - [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
-- [ ] graceful shutdown для Hub
-- [ ] CORS middleware
 - [ ] кеширование
 - [ ] auth more +
-- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
-
-#### rooms feature
-
-- [ ] csv storage в room нужно переименовать в repo
-- [ ] не нравится что id, err := s.csvStorage.AddRoom(*room) указатель разыменовываем (решить надо как передавать структуры в репо)
-- [ ] перенести GetAllRooms AddRoom UpdateRoom DeleteRoom выше чем локальные методы
-- [ ] не делать составные имена по типу hub_manager
-- [ ] дублрирование extractInviteCode убрать
-- [ ] убрать логику старого хаба
 
 ### DONE
 
