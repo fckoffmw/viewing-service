@@ -24,8 +24,10 @@ main {
     background-color: #0D0A09;
     flex: 1;
     font-size: 22px;
-    display: grid;
-    place-items: center; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 .profile-link img {
@@ -142,4 +144,23 @@ aside {
 .chat-room-name {
     color: #C4C1B8;
 }
+
+@media (max-width: 768px) {
+    .room-layout {
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    main {
+        flex: none;
+        height: 40vh;
+    }
+
+    aside {
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+    }
+}
+
 
