@@ -2,8 +2,16 @@ package room
 
 import (
 	"errors"
+	"log/slog"
 	"testing"
+
+	"w2g/internal/source"
 )
+
+// Helper to get private currentSourceID map for testing
+func getCurrentSourceIDForTest(roomID string) string {
+	return currentSourceID[roomID]
+}
 
 var errRepo = errors.New("repo error")
 
@@ -65,6 +73,30 @@ func (m *mockRoomRepo) CountByOwnerID(ownerID string) int {
 	return m.count
 }
 
+func (m *mockRoomRepo) GetAll() []*Room {
+	return m.rooms
+}
+
+type mockSourceGetter struct {
+	src *source.Source
+	err error
+}
+
+func (m *mockSourceGetter) GetSourceById(id string) (*source.Source, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return m.src, nil
+}
+
+type mockHubGetter struct {
+	members int
+}
+
+func (m *mockHubGetter) GetMembersOnline(roomID string) int {
+	return m.members
+}
+
 func TestServiceCreate(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -111,7 +143,7 @@ func TestServiceCreate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRoomRepo{count: tt.count}
-			svc := NewService(repo, tt.maxRoomsPerUser)
+			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, nil, tt.maxRoomsPerUser)
 
 			resp, err := svc.Create(CreateRequest{Name: tt.roomName}, tt.ownerID)
 
@@ -157,7 +189,7 @@ func TestServiceGetByInviteCode(t *testing.T) {
 			repo := &mockRoomRepo{
 				rooms: []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 			}
-			svc := NewService(repo, 10)
+			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, nil, 10)
 
 			resp, err := svc.GetByInviteCode(tt.inviteCode)
 
@@ -174,6 +206,27 @@ func TestServiceGetByInviteCode(t *testing.T) {
 				t.Errorf("resp.InviteCode = %q, want %q", resp.InviteCode, tt.inviteCode)
 			}
 		})
+	}
+}
+
+func TestServiceGetByInviteCodeWithSource(t *testing.T) {
+	repo := &mockRoomRepo{
+		rooms: []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
+	}
+	srcGetter := &mockSourceGetter{src: &source.Source{ID: "s1", Name: "Test Video", Url: "http://example.com"}}
+	svc := NewService(slog.Default(), repo, srcGetter, nil, 10)
+
+	svc.SetCurrentSourceID("1", "s1")
+
+	resp, err := svc.GetByInviteCode("ABCD1234")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.CurrentSource == nil {
+		t.Error("expected current source, got nil")
+	}
+	if resp.CurrentSource.Name != "Test Video" {
+		t.Errorf("current source name = %q, want %q", resp.CurrentSource.Name, "Test Video")
 	}
 }
 
@@ -220,7 +273,7 @@ func TestServiceDelete(t *testing.T) {
 				rooms: []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 				deleteErr: tt.deleteErr,
 			}
-			svc := NewService(repo, 10)
+			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, nil, 10)
 
 			err := svc.Delete(tt.inviteCode, tt.userID)
 
@@ -234,5 +287,68 @@ func TestServiceDelete(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
+	}
+}
+
+func TestServiceGetAllRooms(t *testing.T) {
+	tests := []struct {
+		name         string
+		rooms        []*Room
+		members      int
+		wantCount    int
+	}{
+		{
+			name:      "empty",
+			rooms:     []*Room{},
+			members:   0,
+			wantCount: 0,
+		},
+		{
+			name:      "single room",
+			rooms:     []*Room{{ID: "1", Name: "Room1", InviteCode: "R1", OwnerID: "user1"}},
+			members:   2,
+			wantCount: 1,
+		},
+		{
+			name:      "multiple rooms",
+			rooms:     []*Room{{ID: "1", Name: "Room1", InviteCode: "R1", OwnerID: "user1"}, {ID: "2", Name: "Room2", InviteCode: "R2", OwnerID: "user2"}},
+			members:   5,
+			wantCount: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRoomRepo{rooms: tt.rooms}
+			hub := &mockHubGetter{members: tt.members}
+			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, hub, 10)
+
+			result := svc.GetAllRooms()
+
+			if len(result) != tt.wantCount {
+				t.Errorf("got %d rooms, want %d", len(result), tt.wantCount)
+			}
+			if tt.wantCount > 0 && result[0].MembersOnline != tt.members {
+				t.Errorf("members = %d, want %d", result[0].MembersOnline, tt.members)
+			}
+		})
+	}
+}
+
+func TestServiceSetCurrentSourceID(t *testing.T) {
+	repo := &mockRoomRepo{}
+	svc := NewService(slog.Default(), repo, &mockSourceGetter{}, nil, 10)
+
+	svc.SetCurrentSourceID("room1", "source1")
+	svc.SetCurrentSourceID("room2", "source2")
+
+	if svc.GetCurrentSourceID("room1") != "source1" {
+		t.Errorf("room1 source = %q, want %q", svc.GetCurrentSourceID("room1"), "source1")
+	}
+	if svc.GetCurrentSourceID("room2") != "source2" {
+		t.Errorf("room2 source = %q, want %q", svc.GetCurrentSourceID("room2"), "source2")
+	}
+	if svc.GetCurrentSourceID("nonexistent") != "" {
+		t.Errorf("nonexistent room source = %q, want empty", svc.GetCurrentSourceID("nonexistent"))
 	}
 }

@@ -21,15 +21,17 @@ type SourceStore interface {
 	GetSourceById(id string) (*source.Source, error)
 }
 
-type ServiceHandler interface {
+type Service interface {
 	Create(req CreateRequest, ownerID string) (*CreateResponse, error)
 	GetByInviteCode(inviteCode string) (*GetResponse, error)
 	Delete(inviteCode string, userID string) error
 	GetRoomByID(id string) (*Room, error)
+	SetCurrentSourceID(roomID, sourceID string)
+	GetAllRooms() []GetResponse
 }
 
 type handler struct {
-	service     ServiceHandler
+	service     Service
 	hub         HubManager
 	sourceStore SourceStore
 	log        *slog.Logger
@@ -66,7 +68,7 @@ type PatchSourceResponse struct {
 	SourceID string `json:"source_id"`
 }
 
-func NewHandler(svc ServiceHandler, hub HubManager, srcStore SourceStore, l *slog.Logger) *handler {
+func NewHandler(svc Service, hub HubManager, srcStore SourceStore, l *slog.Logger) *handler {
 	return &handler{
 		service:     svc,
 		hub:         hub,
@@ -129,13 +131,19 @@ func (h handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 	membersOnline := h.hub.GetMembersOnline(room.ID)
 
 	response.WriteOK(w, GetRoomResponse{
-		ID:            room.ID,
-		Name:          room.Name,
-		InviteCode:    room.InviteCode,
-		OwnerID:       room.OwnerID,
-		MembersOnline: membersOnline,
-		CreatedAt:     room.CreatedAt,
+		ID:             room.ID,
+		Name:           room.Name,
+		InviteCode:     room.InviteCode,
+		OwnerID:        room.OwnerID,
+		MembersOnline:  membersOnline,
+		CurrentSource:  room.CurrentSource,
+		CreatedAt:      room.CreatedAt,
 	})
+}
+
+func (h handler) GetAllRooms(w http.ResponseWriter, r *http.Request) {
+	rooms := h.service.GetAllRooms()
+	response.WriteOK(w, rooms)
 }
 
 func (h handler) DeleteRoom(w http.ResponseWriter, r *http.Request) {
@@ -197,6 +205,7 @@ func (h handler) PatchRoomSource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.service.SetCurrentSourceID(room.ID, req.SourceID)
 	h.hub.BroadcastSourceChanged(room.ID, src.ID, src.Url)
 
 	h.log.Info("source changed", "request_id", requestID, "room_id", room.ID, "source_id", req.SourceID)

@@ -39,9 +39,8 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 			"/auth/logout":   true,
 			"/auth/me":       true,
 			"/healthz":       true,
-			"/ws":            true,
 		}
-		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/demo/") {
+		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/demo/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			next.ServeHTTP(w, r)
 			return
 		}

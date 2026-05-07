@@ -23,6 +23,7 @@ type sourceHandler interface {
 
 type roomHandler interface {
 	CreateRoom(w http.ResponseWriter, r *http.Request)
+	GetAllRooms(w http.ResponseWriter, r *http.Request)
 	GetRoom(w http.ResponseWriter, r *http.Request)
 	DeleteRoom(w http.ResponseWriter, r *http.Request)
 	PatchRoomSource(w http.ResponseWriter, r *http.Request)
@@ -60,6 +61,7 @@ func NewRouter(
 	mux.HandleFunc("POST /api/sources", sourceHandler.AddSource)
 
 	mux.HandleFunc("POST /api/rooms", roomHandler.CreateRoom)
+	mux.HandleFunc("GET /api/rooms", roomHandler.GetAllRooms)
 	mux.HandleFunc("GET /api/rooms/{invite_code}", roomHandler.GetRoom)
 	mux.HandleFunc("DELETE /api/rooms/{invite_code}", roomHandler.DeleteRoom)
 	mux.HandleFunc("PATCH /api/rooms/{invite_code}/source", roomHandler.PatchRoomSource)

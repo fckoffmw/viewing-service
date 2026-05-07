@@ -2,6 +2,7 @@ package chat
 
 import (
 	"encoding/json"
+	"log/slog"
 	"sync"
 )
 
@@ -10,9 +11,10 @@ type sender interface {
 }
 
 type hub struct {
-	roomID     string
-	clients    map[sender]struct{}
-	register   chan sender
+	log       *slog.Logger
+	roomID    string
+	clients   map[sender]struct{}
+	register  chan sender
 	unregister chan sender
 	broadcast  chan []byte
 	state      state
@@ -28,6 +30,7 @@ type state struct {
 }
 
 type hubManager struct {
+	log  *slog.Logger
 	hubs map[string]*hub
 	mu   sync.RWMutex
 }
@@ -39,37 +42,44 @@ type HubManager interface {
 	BroadcastSourceChanged(roomID, sourceID, sourceURL string)
 }
 
-func newHub(roomID string) *hub {
+func newHub(log *slog.Logger, roomID string) *hub {
 	return &hub{
-		roomID:     roomID,
-		clients:    make(map[sender]struct{}),
-		register:   make(chan sender),
+		log:       log,
+		roomID:    roomID,
+		clients:   make(map[sender]struct{}),
+		register:  make(chan sender),
 		unregister: make(chan sender),
 		broadcast:  make(chan []byte, 256),
-		stopCh:     make(chan struct{}),
+		stopCh:    make(chan struct{}),
 	}
 }
 
-func NewHubManager() HubManager {
+func NewHubManager(log *slog.Logger) HubManager {
 	return &hubManager{
+		log:  log,
 		hubs: make(map[string]*hub),
 	}
 }
 
 func (h *hub) Run() {
+	h.log.Debug("hub started", "room_id", h.roomID)
 	for {
 		select {
 		case <-h.stopCh:
+			h.log.Debug("hub stopped", "room_id", h.roomID)
 			h.closeAllClients()
 			return
 		case client := <-h.register:
 			h.clients[client] = struct{}{}
+			h.log.Debug("client registered", "room_id", h.roomID, "clients", len(h.clients))
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.Send())
+				h.log.Debug("client unregistered", "room_id", h.roomID, "clients", len(h.clients))
 			}
 		case msg := <-h.broadcast:
+			h.log.Debug("broadcasting message", "room_id", h.roomID, "clients", len(h.clients), "msg_len", len(msg))
 			for client := range h.clients {
 				select {
 				case client.Send() <- msg:
@@ -156,7 +166,7 @@ func (m *hubManager) GetOrCreate(roomID string) *hub {
 		return hub
 	}
 
-	hub := newHub(roomID)
+	hub := newHub(m.log, roomID)
 	m.hubs[roomID] = hub
 	go hub.Run()
 

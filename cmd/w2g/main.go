@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	roomStore, err := room.NewStore(csvStorage)
+	roomStore, err := room.NewStore(log, csvStorage)
 	if err != nil {
 		log.Error("when creating room store", "error", err)
 		os.Exit(1)
@@ -51,8 +51,8 @@ func main() {
 	authService := auth.NewService(csvStorage, sessionStore)
 	authHandler := auth.NewHandler(authService, log)
 
-	roomService := room.NewService(roomStore, config.MaxRoomsPerUser)
-	roomHubManager := chat.NewHubManager()
+	roomHubManager := chat.NewHubManager(log)
+	roomService := room.NewService(log, roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
 	roomHandler := room.NewHandler(roomService, roomHubManager, csvStorage, log)
 
 	r := router.NewRouter(log, authService, authHandler, sourceHandler, roomHandler, roomHubManager)

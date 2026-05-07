@@ -3,11 +3,13 @@ package room
 import (
 	"crypto/rand"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"sync"
 )
 
 type store struct {
+	log     *slog.Logger
 	rooms   map[string]*Room
 	storage Storage
 	mu      sync.RWMutex
@@ -20,16 +22,19 @@ type Storage interface {
 	DeleteRoom(id string) error
 }
 
-func NewStore(storage Storage) (*store, error) {
+func NewStore(log *slog.Logger, storage Storage) (*store, error) {
 	s := &store{
+		log:     log,
 		rooms:   make(map[string]*Room),
 		storage: storage,
 	}
 
 	if err := s.loadFromCSV(); err != nil {
-		return nil, err
+		log.Error("failed to load rooms from storage", "err", err)
+		return nil, fmt.Errorf("load rooms from storage: %w", err)
 	}
 
+	log.Info("room store initialized", "rooms_count", len(s.rooms))
 	return s, nil
 }
 
@@ -60,6 +65,17 @@ func (s *store) loadFromCSV() error {
 	}
 
 	return nil
+}
+
+func (s *store) GetAll() []*Room {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	result := make([]*Room, 0, len(s.rooms))
+	for _, room := range s.rooms {
+		result = append(result, room)
+	}
+	return result
 }
 
 func (s *store) Create(room *Room) error {

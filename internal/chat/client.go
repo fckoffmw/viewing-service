@@ -77,8 +77,15 @@ func ServeWS(log *slog.Logger, hubManager hubGetter, authSvc AuthService, w http
 		return
 	}
 
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Debug("ws: upgrade failed", "err", err)
+		return
+	}
+
 	client := &Client{
 		hub:      roomHub,
+		conn:     conn,
 		username: user.Username,
 		userID:   user.ID,
 		send:     make(chan []byte, 256),

@@ -17,11 +17,17 @@ import (
 var errHandler = errors.New("handler error")
 
 type testService struct {
-	resp       *GetResponse
-	err        error
-	deleteErr  error
+	resp        *GetResponse
+	allResp     []GetResponse
+	err         error
+	deleteErr   error
 }
 
+func (m *testService) GetAllRooms() []GetResponse {
+	return m.allResp
+}
+
+func (m *testService) SetCurrentSourceID(roomID, sourceID string) {}
 func (m *testService) Create(req CreateRequest, ownerID string) (*CreateResponse, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -330,6 +336,43 @@ func TestExtractInviteCode(t *testing.T) {
 			got := httputils.ExtractInviteCode(r)
 			if got != tt.want {
 				t.Errorf("got = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHandlerGetAllRooms(t *testing.T) {
+	tests := []struct {
+		name       string
+		rooms      []GetResponse
+		wantStatus int
+	}{
+		{
+			name:       "success with rooms",
+			rooms:      []GetResponse{{ID: "1", Name: "Room1", InviteCode: "R1", OwnerID: "user1"}, {ID: "2", Name: "Room2", InviteCode: "R2", OwnerID: "user2"}},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "empty rooms",
+			rooms:      []GetResponse{},
+			wantStatus: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &testService{allResp: tt.rooms}
+			hub := &testHub{}
+			srcStore := &testSourceStore{}
+			h := NewHandler(svc, hub, srcStore, slog.Default())
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/api/rooms", nil)
+
+			h.GetAllRooms(w, r)
+
+			if w.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
 			}
 		})
 	}

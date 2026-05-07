@@ -4,6 +4,7 @@
 
 ### TODO
 
+- [ ] rooms: docs, review, tests
 - [ ] review
   - [ ] CRITICAL: убрать глобальную map currentSourceID (room/service.go:49)
   - [ ] CRITICAL: добавить файловую блокировку для CSV
@@ -14,11 +15,11 @@
   - [ ] важно: добавить ReadTimeout/WriteTimeout для http.Server
   - [ ] важно: использовать filepath.Join для путей
   - [ ] важно: добавить CORS middleware
-- [ ] много комнат
 - [ ] побольше логирования с разделением по уровням
 - [ ] sync
   - [ ] ws взаимодействие
   - [ ] nats
+- [ ] чтобы страница обновлялась у всех при изменении источника
 - [ ] разделение источников помимо VK
 - [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
 - [ ] кеширование
@@ -26,6 +27,7 @@
 
 ### DONE
 
+- [x] много комнат
 - [x] simple deploy
 - [x] разгрузить main
 - [x] auth

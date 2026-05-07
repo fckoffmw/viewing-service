@@ -2,14 +2,17 @@ package room
 
 import (
 	"errors"
+	"log/slog"
 	"testing"
 )
 
+var errCSV = errors.New("csv error")
+
 type mockCSVStorage struct {
-	rooms      []Room
+	rooms     []Room
 	getErr    error
 	addErr    error
-	updateErr error
+	delErr    error
 	deleteErr error
 }
 
@@ -24,22 +27,22 @@ func (m *mockCSVStorage) AddRoom(r *Room) (string, error) {
 	if m.addErr != nil {
 		return "", m.addErr
 	}
-	m.rooms = append(m.rooms, *r)
+	r.ID = "1"
 	return r.ID, nil
 }
 
 func (m *mockCSVStorage) UpdateRoom(r Room) error {
-	return m.updateErr
+	return nil
 }
 
 func (m *mockCSVStorage) DeleteRoom(id string) error {
-	if m.deleteErr != nil {
-		return m.deleteErr
+	if m.delErr != nil {
+		return m.delErr
 	}
 	var newRooms []Room
-	for _, room := range m.rooms {
-		if room.ID != id {
-			newRooms = append(newRooms, room)
+	for _, rm := range m.rooms {
+		if rm.ID != id {
+			newRooms = append(newRooms, rm)
 		}
 	}
 	m.rooms = newRooms
@@ -48,35 +51,35 @@ func (m *mockCSVStorage) DeleteRoom(id string) error {
 
 func TestNewStore(t *testing.T) {
 	tests := []struct {
-		name    string
-		rooms  []Room
-		want   int
-		err    error
+		name  string
+		rooms []Room
+		want  int
+		err   error
 	}{
 		{
-			name:    "empty",
-			rooms:  []Room{},
-			want:   0,
-			err:    nil,
+			name:  "success",
+			rooms: []Room{{ID: "1", Name: "Room1", InviteCode: "R1"}, {ID: "2", Name: "Room2", InviteCode: "R2"}},
+			want:  2,
+			err:   nil,
 		},
 		{
-			name:    "with rooms",
-			rooms:  []Room{{ID: "1", InviteCode: "ABCD1234"}, {ID: "2", InviteCode: "EFGH5678"}},
-			want:   2,
-			err:    nil,
+			name:  "empty",
+			rooms: []Room{},
+			want:  0,
+			err:   nil,
 		},
 		{
-			name:    "csv error",
-			rooms:  nil,
-			want:   0,
-			err:    errors.New("csv error"),
+			name:  "csv error",
+			rooms: nil,
+			want:  0,
+			err:   errCSV,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			csv := &mockCSVStorage{rooms: tt.rooms, getErr: tt.err}
-			store, err := NewStore(csv)
+			store, err := NewStore(slog.Default(), csv)
 
 			if tt.err != nil {
 				if err == nil {
@@ -273,7 +276,7 @@ func TestStoreDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			store.rooms = map[string]*Room{"ABCD1234": {ID: "1", InviteCode: "ABCD1234"}}
-			csv.deleteErr = tt.deleteErr
+			csv.delErr = tt.deleteErr
 
 			err := store.Delete(tt.inviteCode)
 
