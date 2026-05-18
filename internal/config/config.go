@@ -15,7 +15,6 @@ func init() {
 type Config struct {
 	Port                    string
 	StorageDir              string
-	MaxClients              int
 	LogLevel                string
 	LogFile                 string
 	SessionsCleanupInterval int
@@ -26,7 +25,6 @@ func Load() *Config {
 	return &Config{
 		Port:                    getEnv("PORT", "8080"),
 		StorageDir:              getEnv("STORAGE_DIR", "./storage/"),
-		MaxClients:              getEnvInt("MAX_CLIENTS", 2),
 		LogLevel:                getEnv("LOG_LEVEL", "debug"),
 		LogFile:                 getEnv("LOG_FILE", ""),
 		SessionsCleanupInterval: getEnvInt("SESSIONS_CLEANUP_INTERVAL", 300),
@@ -36,8 +34,8 @@ func Load() *Config {
 
 func (c *Config) PrettyPrint() string {
 	return fmt.Sprintf(
-		"Port=%s StorageDir=%s MaxClients=%d LogLevel=%s LogFile=%s SessionsCleanupInterval=%d MaxRoomsPerUser=%d",
-		c.Port, c.StorageDir, c.MaxClients, c.LogLevel, c.LogFile, c.SessionsCleanupInterval, c.MaxRoomsPerUser,
+		"Port=%s StorageDir=%s LogLevel=%s LogFile=%s SessionsCleanupInterval=%d MaxRoomsPerUser=%d",
+		c.Port, c.StorageDir, c.LogLevel, c.LogFile, c.SessionsCleanupInterval, c.MaxRoomsPerUser,
 	)
 }
 
