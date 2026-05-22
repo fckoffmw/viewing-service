@@ -4,22 +4,19 @@
 
 ### TODO
 
-- [ ] global review
-  - [ ] done in global-review section
-
-- [ ] rooms: docs, review, tests
-- [ ] побольше логирования с разделением по уровням
+- [ ] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
 - [ ] sync
+  - [ ] чтобы страница обновлялась у всех при изменении источника
   - [ ] ws взаимодействие
   - [ ] nats
-- [ ] чтобы страница обновлялась у всех при изменении источника
 - [ ] разделение источников помимо VK
-- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
 - [ ] кеширование
 - [ ] auth more +
 
 ### DONE
 
+- [x] побольше логирования с разделением по уровням
+- [x] rooms: docs, review, tests
 - [x] много комнат
 - [x] simple deploy
 - [x] разгрузить main
@@ -37,10 +34,3 @@
 - [x] auth — register/login/logout/me endpoints
 - [x] auth middleware
 - [x] login/register pages
-
-- **[INFO] `cmd/web/main.go` is a frontend dev-server** — not the main backend. It serves static files and proxies API to backend on `:8080`. `cmd/w2g/main.go` is the real backend. The two binaries have distinct purposes — worth documenting to avoid confusion.
-
-- **[REFLECT] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
-
-
-
