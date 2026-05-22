@@ -7,8 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"w2g/internal/auth"
+
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -48,9 +49,7 @@ type HubGetter interface {
 	GetOrCreate(roomID string) *hub
 }
 
-type hubGetter = HubGetter
-
-func ServeWS(log *slog.Logger, hubManager hubGetter, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
+func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		log.Debug("ws: no session cookie")
@@ -103,6 +102,9 @@ func (c *Client) Send() chan []byte {
 
 func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 	defer func() {
+		if r := recover(); r != nil {
+			log.Error("ws: readPump panic", "recover", r, "user_id", c.userID)
+		}
 		roomHub.Unregister() <- c
 		c.conn.Close()
 	}()
@@ -153,6 +155,9 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 func (c *Client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		if r := recover(); r != nil {
+			log.Error("ws: writePump panic", "recover", r, "user_id", c.userID)
+		}
 		ticker.Stop()
 		c.conn.Close()
 	}()
@@ -187,12 +192,9 @@ func (c *Client) writePump(log *slog.Logger) {
 }
 
 func extractInviteCodeFromPath(path string) string {
-	for i, ch := range path {
-		if ch == '/' {
-			if i+1 < len(path) {
-				return path[i+1:]
-			}
-		}
+	if idx := strings.LastIndex(path, "/"); idx >= 0 && idx+1 < len(path) {
+		return path[idx+1:]
 	}
+
 	return ""
 }

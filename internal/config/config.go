@@ -8,10 +8,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func init() {
-	_ = godotenv.Load()
-}
-
 type Config struct {
 	Port                    string
 	StorageDir              string
@@ -22,6 +18,7 @@ type Config struct {
 }
 
 func Load() *Config {
+	_ = godotenv.Load()
 	return &Config{
 		Port:                    getEnv("PORT", "8080"),
 		StorageDir:              getEnv("STORAGE_DIR", "./storage/"),

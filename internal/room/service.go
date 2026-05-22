@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sync"
+	"time"
 
 	"w2g/internal/source"
 )
@@ -22,57 +24,38 @@ type Repository interface {
 }
 
 type SourceGetter interface {
-	GetSourceById(id string) (*source.Source, error)
+	GetSourceByID(id string) (*source.Source, error)
 }
 
-type HubGetter interface {
+type HubManager interface {
 	GetMembersOnline(roomID string) int
+	BroadcastSourceChanged(roomID, sourceID, sourceURL string)
+	Remove(roomID string)
 }
 
 type service struct {
 	log             *slog.Logger
 	repo            Repository
 	sourceGetter    SourceGetter
-	hubGetter       HubGetter
+	hub             HubManager
 	maxRoomsPerUser int
+
+	currentSourceID map[string]string
+	mu              sync.RWMutex
 }
 
-type CreateRequest struct {
-	Name string `json:"name"`
-}
-
-type CreateResponse struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	InviteCode string `json:"invite_code"`
-	InviteURL  string `json:"invite_url"`
-	OwnerID    string `json:"owner_id"`
-	CreatedAt  string `json:"created_at"`
-}
-
-type GetResponse struct {
-	ID             string          `json:"id"`
-	Name           string          `json:"name"`
-	InviteCode     string          `json:"invite_code"`
-	OwnerID        string          `json:"owner_id"`
-	MembersOnline  int             `json:"members_online"`
-	CurrentSource  *source.Source  `json:"current_source,omitempty"`
-	CreatedAt      string          `json:"created_at"`
-}
-
-var currentSourceID = make(map[string]string)
-
-func NewService(log *slog.Logger, r Repository, sg SourceGetter, hg HubGetter, maxRoomsPerUser int) *service {
+func NewService(log *slog.Logger, r Repository, sg SourceGetter, h HubManager, maxRoomsPerUser int) *service {
 	return &service{
 		log:             log,
 		repo:            r,
 		sourceGetter:    sg,
-		hubGetter:       hg,
+		hub:             h,
 		maxRoomsPerUser: maxRoomsPerUser,
+		currentSourceID: make(map[string]string),
 	}
 }
 
-func (s *service) GetAllRooms() []GetResponse {
+func (s *service) GetAll() []GetResponse {
 	s.log.Debug("getting all rooms")
 	rooms := s.repo.GetAll()
 	s.log.Debug("rooms fetched", "count", len(rooms))
@@ -81,25 +64,22 @@ func (s *service) GetAllRooms() []GetResponse {
 
 	for _, room := range rooms {
 		resp := GetResponse{
-			ID:            room.ID,
-			Name:          room.Name,
-			InviteCode:    room.InviteCode,
-			OwnerID:       room.OwnerID,
-			MembersOnline: 0,
-			CreatedAt:     room.CreatedAt,
+			ID:         room.ID,
+			Name:       room.Name,
+			InviteCode: room.InviteCode,
+			OwnerID:    room.OwnerID,
+			CreatedAt:  room.CreatedAt.Format(time.RFC3339),
 		}
 
-		sourceID := currentSourceID[room.ID]
+		sourceID := s.getCurrentSourceID(room.ID)
 		if sourceID != "" {
-			src, err := s.sourceGetter.GetSourceById(sourceID)
+			src, err := s.sourceGetter.GetSourceByID(sourceID)
 			if err == nil && src != nil {
 				resp.CurrentSource = src
 			}
 		}
 
-		if s.hubGetter != nil {
-			resp.MembersOnline = s.hubGetter.GetMembersOnline(room.InviteCode)
-		}
+		resp.MembersOnline = s.hub.GetMembersOnline(room.InviteCode)
 
 		result = append(result, resp)
 	}
@@ -112,6 +92,7 @@ func (s *service) Create(req CreateRequest, ownerID string) (*CreateResponse, er
 
 	if s.maxRoomsPerUser > 0 && s.repo.CountByOwnerID(ownerID) >= s.maxRoomsPerUser {
 		s.log.Warn("max rooms reached", "owner_id", ownerID, "max", s.maxRoomsPerUser)
+
 		return nil, ErrMaxRoomsReached
 	}
 
@@ -122,6 +103,7 @@ func (s *service) Create(req CreateRequest, ownerID string) (*CreateResponse, er
 
 	if err := s.repo.Create(room); err != nil {
 		s.log.Error("failed to create room", "err", err, "owner_id", ownerID)
+
 		return nil, err
 	}
 
@@ -133,7 +115,7 @@ func (s *service) Create(req CreateRequest, ownerID string) (*CreateResponse, er
 		InviteCode: room.InviteCode,
 		InviteURL:  "/room/" + room.InviteCode,
 		OwnerID:    room.OwnerID,
-		CreatedAt:  room.CreatedAt,
+		CreatedAt:  room.CreatedAt.Format(time.RFC3339),
 	}, nil
 }
 
@@ -143,21 +125,24 @@ func (s *service) GetByInviteCode(inviteCode string) (*GetResponse, error) {
 	room, err := s.repo.GetByInviteCode(inviteCode)
 	if err != nil {
 		s.log.Error("room not found", "invite_code", inviteCode, "err", err)
+
 		return nil, fmt.Errorf("get room %s: %w", inviteCode, err)
 	}
+
+	membersOnline := s.hub.GetMembersOnline(inviteCode)
 
 	resp := &GetResponse{
 		ID:            room.ID,
 		Name:          room.Name,
 		InviteCode:    room.InviteCode,
 		OwnerID:       room.OwnerID,
-		MembersOnline: 0,
-		CreatedAt:     room.CreatedAt,
+		MembersOnline: membersOnline,
+		CreatedAt:     room.CreatedAt.Format(time.RFC3339),
 	}
 
-	sourceID := currentSourceID[room.ID]
+	sourceID := s.getCurrentSourceID(room.ID)
 	if sourceID != "" {
-		src, err := s.sourceGetter.GetSourceById(sourceID)
+	src, err := s.sourceGetter.GetSourceByID(sourceID)
 		if err == nil && src != nil {
 			resp.CurrentSource = src
 			s.log.Debug("current source loaded", "source_id", sourceID, "source_name", src.Name)
@@ -173,36 +158,74 @@ func (s *service) Delete(inviteCode string, userID string) error {
 	room, err := s.repo.GetByInviteCode(inviteCode)
 	if err != nil {
 		s.log.Error("failed to get room for delete", "invite_code", inviteCode, "err", err)
+
 		return err
 	}
 
 	if room.OwnerID != userID {
 		s.log.Warn("delete denied - not owner", "invite_code", inviteCode, "user_id", userID, "owner_id", room.OwnerID)
+
 		return ErrNotOwner
 	}
 
 	if err := s.repo.Delete(inviteCode); err != nil {
 		s.log.Error("failed to delete room", "invite_code", inviteCode, "err", err)
+
 		return err
 	}
 
+	s.hub.Remove(inviteCode)
+
 	s.log.Info("room deleted", "invite_code", inviteCode, "room_id", room.ID)
+
 	return nil
 }
 
-func (s *service) GetRoomByID(id string) (*Room, error) {
+func (s *service) PatchSource(inviteCode, ownerID, sourceID string) error {
+	s.log.Debug("patching room source", "invite_code", inviteCode, "source_id", sourceID)
+
+	room, err := s.repo.GetByInviteCode(inviteCode)
+	if err != nil {
+		s.log.Error("failed to get room for patch", "invite_code", inviteCode, "err", err)
+
+		return fmt.Errorf("get room %s: %w", inviteCode, err)
+	}
+
+	if room.OwnerID != ownerID {
+		s.log.Warn("patch source denied - not owner", "invite_code", inviteCode, "user_id", ownerID, "owner_id", room.OwnerID)
+
+		return ErrNotOwner
+	}
+
+	src, err := s.sourceGetter.GetSourceByID(sourceID)
+	if err != nil {
+		s.log.Warn("source not found", "source_id", sourceID, "err", err)
+
+		return ErrSourceNotFound
+	}
+
+	s.setCurrentSourceID(room.ID, sourceID)
+	s.hub.BroadcastSourceChanged(inviteCode, sourceID, src.URL)
+
+	s.log.Info("source changed", "room_id", room.ID, "invite_code", inviteCode, "source_id", sourceID)
+
+	return nil
+}
+
+func (s *service) GetByID(id string) (*Room, error) {
 	return s.repo.GetByID(id)
 }
 
-func (s *service) GetRepo() Repository {
-	return s.repo
+func (s *service) getCurrentSourceID(roomID string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return s.currentSourceID[roomID]
 }
 
-func (s *service) GetCurrentSourceID(roomID string) string {
-	return currentSourceID[roomID]
-}
+func (s *service) setCurrentSourceID(roomID, sourceID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-func (s *service) SetCurrentSourceID(roomID, sourceID string) {
-	s.log.Debug("setting current source", "room_id", roomID, "source_id", sourceID)
-	currentSourceID[roomID] = sourceID
+	s.currentSourceID[roomID] = sourceID
 }

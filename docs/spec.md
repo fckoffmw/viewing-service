@@ -42,7 +42,7 @@
 | `name` | string | Название комнаты |
 | `owner_id` | string | ID владельца |
 | `invite_code` | string | Код для приглашения (8 символов) |
-| `created_at` | string | Время создания |
+| `created_at` | time | Время создания |
 
 ### Session
 | Поле | Тип | Описание |

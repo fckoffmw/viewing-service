@@ -24,7 +24,7 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 | `room` | Управление комнатами |
 | `source` | Управление источниками |
 | `response` | Утилиты для HTTP ответов |
-| `errors` | Кастомные ошибки |
+| `apperrors` | Кастомные ошибки |
 | `config` | Конфигурация |
 
 ## Middleware
@@ -66,7 +66,7 @@ Thread-safe через `sync.RWMutex`.
 
 | Метод | Путь | Обработчик |
 |-------|------|----------|
-| GET | `/healthz` | Health check |
+| GET | `/healthz` | health check |
 | POST | `/auth/register` | auth.Register |
 | POST | `/auth/login` | auth.Login |
 | POST | `/auth/logout` | auth.Logout |
@@ -76,12 +76,13 @@ Thread-safe через `sync.RWMutex`.
 
 | Метод | Путь | Обработчик |
 |-------|------|----------|
-| GET | `/api/sources` | source.GetAllSources |
-| POST | `/api/sources` | source.AddSource |
-| POST | `/api/rooms` | room.CreateRoom |
-| GET | `/api/rooms/{invite_code}` | room.GetRoom |
-| DELETE | `/api/rooms/{invite_code}` | room.DeleteRoom |
-| PATCH | `/api/rooms/{invite_code}/source` | room.PatchRoomSource |
+| GET | `/api/sources` | source.GetAll |
+| POST | `/api/sources` | source.Add |
+| POST | `/api/rooms` | room.Create |
+| GET | `/api/rooms` | room.GetAll |
+| GET | `/api/rooms/{invite_code}` | room.Get |
+| DELETE | `/api/rooms/{invite_code}` | room.Delete |
+| PATCH | `/api/rooms/{invite_code}/source` | room.PatchSource |
 
 ### WebSocket
 

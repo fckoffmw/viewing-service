@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"time"
 
-	apperrors "w2g/internal/errors"
+	"w2g/internal/apperrors"
 
 	"golang.org/x/crypto/bcrypt"
 )

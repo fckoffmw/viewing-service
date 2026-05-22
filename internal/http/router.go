@@ -17,16 +17,16 @@ type authHandler interface {
 }
 
 type sourceHandler interface {
-	GetAllSources(w http.ResponseWriter, r *http.Request)
-	AddSource(w http.ResponseWriter, r *http.Request)
+	GetAll(w http.ResponseWriter, r *http.Request)
+	Add(w http.ResponseWriter, r *http.Request)
 }
 
 type roomHandler interface {
-	CreateRoom(w http.ResponseWriter, r *http.Request)
-	GetAllRooms(w http.ResponseWriter, r *http.Request)
-	GetRoom(w http.ResponseWriter, r *http.Request)
-	DeleteRoom(w http.ResponseWriter, r *http.Request)
-	PatchRoomSource(w http.ResponseWriter, r *http.Request)
+	Create(w http.ResponseWriter, r *http.Request)
+	GetAll(w http.ResponseWriter, r *http.Request)
+	Get(w http.ResponseWriter, r *http.Request)
+	Delete(w http.ResponseWriter, r *http.Request)
+	PatchSource(w http.ResponseWriter, r *http.Request)
 }
 
 type router struct {
@@ -57,14 +57,14 @@ func NewRouter(
 	mux.HandleFunc("POST /auth/logout", authHandler.Logout)
 	mux.HandleFunc("GET /auth/me", authHandler.Me)
 
-	mux.HandleFunc("GET /api/sources", sourceHandler.GetAllSources)
-	mux.HandleFunc("POST /api/sources", sourceHandler.AddSource)
+	mux.HandleFunc("GET /api/sources", sourceHandler.GetAll)
+	mux.HandleFunc("POST /api/sources", sourceHandler.Add)
 
-	mux.HandleFunc("POST /api/rooms", roomHandler.CreateRoom)
-	mux.HandleFunc("GET /api/rooms", roomHandler.GetAllRooms)
-	mux.HandleFunc("GET /api/rooms/{invite_code}", roomHandler.GetRoom)
-	mux.HandleFunc("DELETE /api/rooms/{invite_code}", roomHandler.DeleteRoom)
-	mux.HandleFunc("PATCH /api/rooms/{invite_code}/source", roomHandler.PatchRoomSource)
+	mux.HandleFunc("POST /api/rooms", roomHandler.Create)
+	mux.HandleFunc("GET /api/rooms", roomHandler.GetAll)
+	mux.HandleFunc("GET /api/rooms/{invite_code}", roomHandler.Get)
+	mux.HandleFunc("DELETE /api/rooms/{invite_code}", roomHandler.Delete)
+	mux.HandleFunc("PATCH /api/rooms/{invite_code}/source", roomHandler.PatchSource)
 
 	return &router{
 		log:     log,

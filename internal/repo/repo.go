@@ -176,7 +176,7 @@ func (s *csvStorage) GetAllSources() ([]source.Source, error) {
 	return sources, nil
 }
 
-func (s *csvStorage) GetSourceById(id string) (*source.Source, error) {
+func (s *csvStorage) GetSourceByID(id string) (*source.Source, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -203,7 +203,7 @@ func (s *csvStorage) AddSource(source *source.Source) (string, error) {
 	record := []string{
 		id,
 		source.Name,
-		source.Url,
+		source.URL,
 	}
 	if err := writer.Write(record); err != nil {
 		return "", err
@@ -275,7 +275,7 @@ func (s *csvStorage) AddRoom(r *room.Room) (string, error) {
 	filename := s.dataStruct[roomsTable].filename
 	newID := s.getNewRoomID()
 
-	row := []string{newID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
+	row := []string{newID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt.Format(time.RFC3339)}
 
 	records, err := readAllFromFile(s.basePath + filename)
 	if err != nil {
@@ -310,7 +310,7 @@ func (s *csvStorage) UpdateRoom(r room.Room) error {
 
 	for i, record := range records {
 		if i > 0 && len(record) > 0 && record[0] == r.ID {
-			records[i] = []string{r.ID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt}
+			records[i] = []string{r.ID, r.Name, r.OwnerID, r.InviteCode, r.CreatedAt.Format(time.RFC3339)}
 			break
 		}
 	}

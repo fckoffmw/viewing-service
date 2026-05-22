@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
-	apperrors "w2g/internal/errors"
+	"w2g/internal/apperrors"
 )
 
 type mockRepo struct {

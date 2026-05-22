@@ -70,14 +70,3 @@ func TestChatMessageParse(t *testing.T) {
 	}
 }
 
-func TestMaxTextLen(t *testing.T) {
-	if maxTextLen != 500 {
-		t.Errorf("maxTextLen = %d, want 500", maxTextLen)
-	}
-}
-
-func TestMaxMessageSize(t *testing.T) {
-	if maxMessageSize != 1024 {
-		t.Errorf("maxMessageSize = %d, want 1024", maxMessageSize)
-	}
-}

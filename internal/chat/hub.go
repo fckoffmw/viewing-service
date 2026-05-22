@@ -20,6 +20,7 @@ type hub struct {
 	state      state
 	stopCh     chan struct{}
 	mu         sync.RWMutex
+	onEmpty   func()
 }
 
 type state struct {
@@ -40,6 +41,7 @@ type HubManager interface {
 	GetRoomState(roomID string) (string, string, bool, float64)
 	GetMembersOnline(roomID string) int
 	BroadcastSourceChanged(roomID, sourceID, sourceURL string)
+	Remove(roomID string)
 }
 
 func newHub(log *slog.Logger, roomID string) *hub {
@@ -78,6 +80,11 @@ func (h *hub) Run() {
 				close(client.Send())
 				h.log.Debug("client unregistered", "room_id", h.roomID, "clients", len(h.clients))
 			}
+			if len(h.clients) == 0 {
+				h.shutdownOnEmpty()
+
+				return
+			}
 		case msg := <-h.broadcast:
 			h.log.Debug("broadcasting message", "room_id", h.roomID, "clients", len(h.clients), "msg_len", len(msg))
 			for client := range h.clients {
@@ -87,6 +94,11 @@ func (h *hub) Run() {
 					delete(h.clients, client)
 					close(client.Send())
 				}
+			}
+			if len(h.clients) == 0 {
+				h.shutdownOnEmpty()
+
+				return
 			}
 		}
 	}
@@ -126,6 +138,9 @@ func (h *hub) SetState(sourceID, sourceURL string, playing bool, position float6
 }
 
 func (h *hub) BroadcastSourceChanged(sourceID, sourceURL string) {
+	_, _, playing, position := h.GetState()
+	h.SetState(sourceID, sourceURL, playing, position)
+
 	msg := map[string]interface{}{
 		"type": "source_changed",
 		"payload": map[string]string{
@@ -152,6 +167,13 @@ func (h *hub) MemberCount() int {
 	return len(h.clients)
 }
 
+func (h *hub) shutdownOnEmpty() {
+	h.log.Debug("hub empty, stopping", "room_id", h.roomID)
+	if h.onEmpty != nil {
+		h.onEmpty()
+	}
+}
+
 func (h *hub) closeAllClients() {
 	for client := range h.clients {
 		close(client.Send())
@@ -167,6 +189,9 @@ func (m *hubManager) GetOrCreate(roomID string) *hub {
 	}
 
 	hub := newHub(m.log, roomID)
+	hub.onEmpty = func() {
+		m.Remove(roomID)
+	}
 	m.hubs[roomID] = hub
 	go hub.Run()
 

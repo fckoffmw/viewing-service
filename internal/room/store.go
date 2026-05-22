@@ -1,11 +1,10 @@
 package room
 
 import (
-	"crypto/rand"
 	"fmt"
 	"log/slog"
-	"math/big"
 	"sync"
+	"w2g/internal/strutils"
 )
 
 type store struct {
@@ -38,22 +37,6 @@ func NewStore(log *slog.Logger, storage Storage) (*store, error) {
 	return s, nil
 }
 
-func generateInviteCode() (string, error) {
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 8
-
-	result := make([]byte, length)
-	for i := range result {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
-		if err != nil {
-			return "", err
-		}
-		result[i] = chars[num.Int64()]
-	}
-
-	return string(result), nil
-}
-
 func (s *store) loadFromCSV() error {
 	rooms, err := s.storage.GetAllRooms()
 	if err != nil {
@@ -79,7 +62,7 @@ func (s *store) GetAll() []*Room {
 }
 
 func (s *store) Create(room *Room) error {
-	inviteCode, err := generateInviteCode()
+	inviteCode, err := strutils.GenerateInviteCode()
 	if err != nil {
 		return err
 	}

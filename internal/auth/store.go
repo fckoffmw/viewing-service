@@ -42,18 +42,27 @@ func (s *sessionStore) Set(session *Session) {
 }
 
 func (s *sessionStore) Get(id string) (*Session, bool) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	s.mu.RLock()
 	sess, ok := s.sessions[id]
+	s.mu.RUnlock()
+
 	if !ok {
 		return nil, false
 	}
 
-	if sess.ExpiresAt.Before(time.Now()) {
+	if !sess.ExpiresAt.Before(time.Now()) {
+		return sess, true
+	}
+
+	s.mu.Lock()
+	sess, ok = s.sessions[id]
+	if ok && sess.ExpiresAt.Before(time.Now()) {
 		delete(s.sessions, id)
+		s.mu.Unlock()
+
 		return nil, false
 	}
+	s.mu.Unlock()
 
 	return sess, true
 }

@@ -1,13 +1,11 @@
 package room
 
+import "time"
+
 type Room struct {
-	ID          string
+	ID         string
 	Name       string
 	OwnerID    string
 	InviteCode string
-	CreatedAt  string
-}
-
-func (r Room) GetID() string {
-	return r.ID
+	CreatedAt  time.Time
 }

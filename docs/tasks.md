@@ -4,17 +4,10 @@
 
 ### TODO
 
+- [ ] global review
+  - [ ] done in global-review section
+
 - [ ] rooms: docs, review, tests
-- [ ] review
-  - [ ] CRITICAL: убрать глобальную map currentSourceID (room/service.go:49)
-  - [ ] CRITICAL: добавить файловую блокировку для CSV
-  - [ ] CRITICAL: добавить graceful shutdown для Hub
-  - [ ] CRITICAL: валидация Source URL
-  - [ ] важно: sessions persistence (сейчас in-memory)
-  - [ ] важно: добавить rate limiting
-  - [ ] важно: добавить ReadTimeout/WriteTimeout для http.Server
-  - [ ] важно: использовать filepath.Join для путей
-  - [ ] важно: добавить CORS middleware
 - [ ] побольше логирования с разделением по уровням
 - [ ] sync
   - [ ] ws взаимодействие
@@ -45,17 +38,9 @@
 - [x] auth middleware
 - [x] login/register pages
 
-## Frontend
+- **[INFO] `cmd/web/main.go` is a frontend dev-server** — not the main backend. It serves static files and proxies API to backend on `:8080`. `cmd/w2g/main.go` is the real backend. The two binaries have distinct purposes — worth documenting to avoid confusion.
 
-### TODO
+- **[REFLECT] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
 
-- [ ] страница выбора контента — добавить проверку auth
 
-### DONE
 
-- [x] Landing page (index.html)
-- [x] Room page (room.html) — плеер + чат
-- [x] Content selection page (content.html)
-- [x] Login page (login.html)
-- [x] Register page (register.html)
-- [x] CSS для всех страниц

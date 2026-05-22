@@ -9,7 +9,7 @@ import (
 	"time"
 	"w2g/internal/auth"
 
-	apperrors "w2g/internal/errors"
+	"w2g/internal/apperrors"
 )
 
 type Middleware func(http.Handler, ...any) http.Handler

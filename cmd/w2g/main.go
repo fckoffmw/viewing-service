@@ -53,7 +53,7 @@ func main() {
 
 	roomHubManager := chat.NewHubManager(log)
 	roomService := room.NewService(log, roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
-	roomHandler := room.NewHandler(roomService, roomHubManager, csvStorage, log)
+	roomHandler := room.NewHandler(roomService, log)
 
 	r := router.NewRouter(log, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
 

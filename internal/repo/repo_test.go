@@ -215,14 +215,14 @@ func TestGetAllSources(t *testing.T) {
 	}
 }
 
-func TestGetSourceById(t *testing.T) {
+func TestGetSourceByID(t *testing.T) {
 	storage := setupTestStorage(t, map[string]string{
 		"sources.csv": "id,name,url\n1,Seven,http://vk.com/seven\n2,Matrix,http://vk.com/matrix\n",
 		"rooms.csv":   "id,source_id\n1,1\n",
 	})
 
 	t.Run("found", func(t *testing.T) {
-		s, err := storage.GetSourceById("2")
+		s, err := storage.GetSourceByID("2")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -232,7 +232,7 @@ func TestGetSourceById(t *testing.T) {
 	})
 
 	t.Run("not found", func(t *testing.T) {
-		_, err := storage.GetSourceById("999")
+		_, err := storage.GetSourceByID("999")
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -271,7 +271,7 @@ func TestAddRoom(t *testing.T) {
 		Name:       "Second",
 		OwnerID:    "user2",
 		InviteCode:  "EFGH5678",
-		CreatedAt: "2025-01-02T00:00:00Z",
+		CreatedAt: time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC),
 	}
 
 	id, err := storage.AddRoom(&room)
@@ -302,7 +302,7 @@ func TestUpdateRoom(t *testing.T) {
 		Name:       "NewName",
 		OwnerID:    "user1",
 		InviteCode: "ABCD1234",
-		CreatedAt: "2025-01-01T00:00:00Z",
+		CreatedAt: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
 	err := storage.UpdateRoom(room)

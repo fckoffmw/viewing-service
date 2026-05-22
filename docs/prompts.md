@@ -8,6 +8,21 @@
 - всегда спрашивай разрешения для редактирования кода
 - мысли больше об архитектуре и высокоуровневых решениях чем об реализации
 - я должен больше иметь дела с кодом чем ты (фронтенд вероятно ты будешь писать много)
+- замечания к стилю: в случае return для ошибок ВСЕГДА добавлять отступ перед ним:
+```go
+// Bad:
+if err != nil {
+   log.Error()
+   return
+}
+
+// Good:
+if err != nil {
+   log.Error()
+
+   return
+}
+```
 
 Сейчас разберись с устройством сервиса, вникни в контекст и будь готов общаться дальше
 
@@ -29,6 +44,7 @@
 # docs 
 
 вникни в документацию, в структуру проекта и его нынешнее положение, приведи документацию к виду:
+- особенное внимание к api.md нужно КАЧЕСТВЕННО перепроверить и уточнить все поля ответов и статус коды
 - не правь документацию если логически это не требуется
 - исправь все опечатки
 - не используй много лишних слов (минимально пояснений)
@@ -55,15 +71,15 @@
 - Go 1.26, vanilla HTML/CSS/JS фронтенд
 - CSV хранилище (users, sources, rooms)
 - Session-based auth (bcrypt, in-memory sessions)
-- WebSocket чат (max 2 клиента)
-- Одна глобальная комната
+- WebSocket чат
+- Мультикомнаты с invite-кодами
 - REST API на 8080 порту, статика через nginx
 
 ### Структура проекта (Go)
 - cmd/w2g/main.go — точка входа
 - internal/auth — аутентификация, сессии
 - internal/chat — WebSocket hub + client
-- internal/room — управление комнатой (сейчас 1 глобальная)
+- internal/room — управление комнатами
 - internal/source — источники видео (CRUD)
 - internal/repo — CSV хранилище (sync.RWMutex)
 - internal/config — конфиг из .env
@@ -71,8 +87,9 @@
 
 ### API endpoints
 - POST /auth/register, /auth/login, /auth/logout, GET /auth/me
-- GET/POST /api/sources, GET /api/room, PATCH /api/room/source
-- GET /ws (WebSocket)
+- GET/POST /api/sources
+- GET/POST /api/rooms, DELETE /api/rooms/{invite_code}, PATCH /api/rooms/{invite_code}/source
+- GET /ws/{invite_code} (WebSocket)
 - GET /healthz
 
 ### Деплой

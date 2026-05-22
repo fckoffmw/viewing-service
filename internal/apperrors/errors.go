@@ -1,4 +1,4 @@
-package errors
+package apperrors
 
 type Error struct {
 	Code    int    `json:"code"`
