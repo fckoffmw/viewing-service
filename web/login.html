@@ -4,49 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>w2g — Вход</title>
-  <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <div class="container">
+  <nav class="auth-nav">
+    <a href="/">w2g</a>
+  </nav>
+
+  <div class="auth-form">
     <h1>Вход</h1>
-    <form id="login-form" class="form">
-      <input type="text" id="username" placeholder="Имя пользователя" required minlength="3">
-      <input type="password" id="password" placeholder="Пароль" required minlength="4">
-      <button type="submit" class="btn">Войти</button>
+    <form id="login-form">
+      <input type="text" id="username" placeholder="Имя пользователя" required minlength="3" autocomplete="username" class="auth-input">
+      <input type="password" id="password" placeholder="Пароль" required minlength="4" autocomplete="current-password" class="auth-input">
+      <button type="submit" class="auth-btn">Войти</button>
     </form>
-    <p class="switch">Нет аккаунта? <a href="/register.html">Регистрация</a></p>
-    <p id="error" class="error" style="display:none"></p>
+    <div id="error" class="auth-error"></div>
+    <p class="auth-switch">Нет аккаунта? <a href="/register.html">Регистрация</a></p>
   </div>
 
   <script>
-    // Check if already logged in - redirect to index
-    (async function() {
-      var res = await fetch("/auth/me");
-      if (res.ok) {
-        window.location.href = "/index.html";
+    (async function checkAlreadyLogged() {
+      try {
+        var res = await fetch('/auth/me')
+        if (res.ok) window.location.href = '/index.html'
+      } catch {}
+    })()
+
+    document.getElementById('login-form').addEventListener('submit', async function (e) {
+      e.preventDefault()
+      var username = document.getElementById('username').value.trim()
+      var password = document.getElementById('password').value
+      var errorEl = document.getElementById('error')
+      var btn = this.querySelector('button')
+
+      errorEl.style.display = 'none'
+      btn.disabled = true
+      btn.textContent = 'Вход...'
+
+      try {
+        var res = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password }),
+        })
+        var data = await res.json()
+
+        if (res.ok) {
+          window.location.href = '/index.html'
+          return
+        }
+        errorEl.textContent = data.error || 'Ошибка входа'
+        errorEl.style.display = 'block'
+      } catch {
+        errorEl.textContent = 'Ошибка соединения'
+        errorEl.style.display = 'block'
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Войти'
       }
-    })();
-
-    document.getElementById("login-form").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      var username = document.getElementById("username").value.trim();
-      var password = document.getElementById("password").value;
-      var errorEl = document.getElementById("error");
-
-      var res = await fetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username, password: password }),
-      });
-
-      var data = await res.json();
-      if (res.ok) {
-        window.location.href = "/index.html";
-      } else {
-        errorEl.textContent = data.error || "Ошибка входа";
-        errorEl.style.display = "block";
-      }
-    });
+    })
   </script>
 </body>
 </html>
