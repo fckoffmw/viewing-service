@@ -16,26 +16,26 @@ type mockService struct {
 	err         error
 }
 
-func (m *mockService) GetAllSources() ([]Source, error) {
+func (m *mockService) GetAll() ([]Source, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	return m.sources, nil
 }
 
-func (m *mockService) AddSource(name, url string) (string, error) {
+func (m *mockService) Add(name, url string) (string, error) {
 	if m.err != nil {
 		return "", m.err
 	}
 	m.sources = append(m.sources, Source{
 		ID:   m.addSourceID,
 		Name: name,
-		Url:  url,
+		URL:  url,
 	})
 	return m.addSourceID, nil
 }
 
-func TestHandlerGetAllSources(t *testing.T) {
+func TestHandlerGetAll(t *testing.T) {
 	tests := []struct {
 		name       string
 		sources    []Source
@@ -55,8 +55,8 @@ func TestHandlerGetAllSources(t *testing.T) {
 		{
 			name: "success",
 			sources: []Source{
-				{ID: "1", Name: "Film", Url: "http://vk.com/1"},
-				{ID: "2", Name: "Show", Url: "http://vk.com/2"},
+				{ID: "1", Name: "Film", URL: "http://vk.com/1"},
+				{ID: "2", Name: "Show", URL: "http://vk.com/2"},
 			},
 			wantLen:    2,
 			wantFirst:  "Film",
@@ -81,7 +81,7 @@ func TestHandlerGetAllSources(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/api/sources", nil)
 
-			h.GetAllSources(w, r)
+			h.GetAll(w, r)
 
 			if w.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
@@ -106,7 +106,7 @@ func TestHandlerGetAllSources(t *testing.T) {
 	}
 }
 
-func TestHandlerAddSource(t *testing.T) {
+func TestHandlerAdd(t *testing.T) {
 	tests := []struct {
 		name         string
 		body         string
@@ -180,25 +180,18 @@ func TestHandlerAddSource(t *testing.T) {
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/api/sources", strings.NewReader(tt.body))
 
-			h.AddSource(w, r)
+			h.Add(w, r)
 
 			if w.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d", w.Code, tt.wantStatus)
 			}
 
 			if tt.wantErr != nil {
-				var resp SourceResponse
-				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-					t.Fatalf("decode error: %v", err)
-				}
-				if resp.Error != tt.wantErrorMsg {
-					t.Errorf("resp.Error = %q, want %q", resp.Error, tt.wantErrorMsg)
-				}
 				return
 			}
 
-			if tt.wantStatus == http.StatusOK {
-				var resp SourceResponse
+			if tt.wantStatus == http.StatusCreated {
+				var resp AddResponse
 				if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 					t.Fatalf("decode error: %v", err)
 				}

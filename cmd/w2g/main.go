@@ -34,6 +34,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	roomStore, err := room.NewStore(log, csvStorage)
+	if err != nil {
+		log.Error("when creating room store", "error", err)
+		os.Exit(1)
+	}
+
 	sessionStore := auth.NewSessionStore(
 		time.Duration(config.SessionsCleanupInterval) * time.Second,
 	)
@@ -45,13 +51,11 @@ func main() {
 	authService := auth.NewService(csvStorage, sessionStore)
 	authHandler := auth.NewHandler(authService, log)
 
-	roomService := room.NewService(csvStorage)
+	roomHubManager := chat.NewHubManager(log)
+	roomService := room.NewService(log, roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
 	roomHandler := room.NewHandler(roomService, log)
 
-	hub := chat.NewHub(config.MaxClients)
-	go hub.Run()
-
-	r := router.NewRouter(log, hub, authService, authHandler, sourceHandler, roomHandler)
+	r := router.NewRouter(log, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
 
 	r.UseLoggingMiddleware()
 	r.UseAuthMiddleware(sessionStore)
@@ -84,9 +88,6 @@ func main() {
 
 	log.Info("stopping session cleanup...")
 	sessionStore.Stop()
-
-	log.Info("stopping chat hub...")
-	hub.Close()
 
 	log.Info("shutdown complete")
 }

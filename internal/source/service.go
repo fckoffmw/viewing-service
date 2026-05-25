@@ -2,7 +2,7 @@ package source
 
 type repository interface {
 	GetAllSources() ([]Source, error)
-	AddSource(Source) (string, error)
+	AddSource(*Source) (string, error)
 }
 
 type service struct {
@@ -15,13 +15,13 @@ func NewService(r repository) *service {
 	}
 }
 
-func (s service) GetAllSources() ([]Source, error) {
+func (s *service) GetAll() ([]Source, error) {
 	return s.repo.GetAllSources()
 }
 
-func (s service) AddSource(name, url string) (string, error) {
-	return s.repo.AddSource(Source{
+func (s *service) Add(name, url string) (string, error) {
+	return s.repo.AddSource(&Source{
 		Name: name,
-		Url:  url,
+		URL:  url,
 	})
 }

@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 
-	"w2g/internal/response"
+	"w2g/internal/http/response"
 )
 
 type Service interface {
-	GetAllSources() ([]Source, error)
-	AddSource(name, url string) (string, error)
+	GetAll() ([]Source, error)
+	Add(name, url string) (string, error)
 }
 
 type handler struct {
@@ -18,18 +18,13 @@ type handler struct {
 	log     *slog.Logger
 }
 
-type AddSourceRequest struct {
+type AddRequest struct {
 	Name string `json:"name"`
-	Url  string `json:"url"`
+	URL  string `json:"url"`
 }
 
-type AddSourceResponse struct {
+type AddResponse struct {
 	ID string `json:"id"`
-}
-
-type SourceResponse struct {
-	ID    string `json:"id,omitempty"`
-	Error string `json:"error,omitempty"`
 }
 
 func NewHandler(s Service, l *slog.Logger) *handler {
@@ -39,43 +34,47 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 	}
 }
 
-func (h handler) GetAllSources(w http.ResponseWriter, r *http.Request) {
+func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
-	sources, err := h.service.GetAllSources()
+	sources, err := h.service.GetAll()
 	if err != nil {
-		h.log.Error("when getting sources", "request_id", requestID, "err", err)
+		h.log.Error("failed to get sources", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "cannot get sources")
+
 		return
 	}
 
-	h.log.Info("sources retrieved", "request_id", requestID, "count", len(sources))
+	h.log.Debug("sources retrieved", "request_id", requestID, "count", len(sources))
 	response.WriteOK(w, sources)
 }
 
-func (h handler) AddSource(w http.ResponseWriter, r *http.Request) {
+func (h *handler) Add(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
-	var req AddSourceRequest
+	var req AddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.log.Error("when reading req body", "request_id", requestID, "err", err)
+		h.log.Warn("invalid request body", "request_id", requestID, "err", err)
 		response.WriteBadRequest(w, "cannot read req body")
+
 		return
 	}
 	r.Body.Close()
 
-	if req.Name == "" || req.Url == "" {
+	if req.Name == "" || req.URL == "" {
 		response.WriteBadRequest(w, "name and url are required")
+
 		return
 	}
 
-	id, err := h.service.AddSource(req.Name, req.Url)
+	id, err := h.service.Add(req.Name, req.URL)
 	if err != nil {
-		h.log.Error("when adding source", "request_id", requestID, "err", err)
+		h.log.Error("failed to add source", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "cannot add source")
+
 		return
 	}
-	h.log.Info("successfuly added new source", "request_id", requestID, "id", id)
 
-	response.WriteCreated(w, AddSourceResponse{ID: id})
+	h.log.Info("source added", "request_id", requestID, "id", id)
+	response.WriteCreated(w, AddResponse{ID: id})
 }

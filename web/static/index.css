@@ -11,6 +11,49 @@ body {
   min-height: 100vh;
 }
 
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #222;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #ccc;
+}
+
+.user-greeting {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  padding: 8px 16px;
+  background: #222;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.logout-btn:hover {
+  background: #2a2a2a;
+  color: #aaa;
+  border-color: #444;
+}
+
 .container {
   max-width: 600px;
   margin: 0 auto;
@@ -18,9 +61,8 @@ body {
   text-align: center;
 }
 
-h1 {
-  margin-bottom: 32px;
-  font-size: 2rem;
+.container h1 {
+  display: none;
 }
 
 .buttons {
@@ -121,4 +163,160 @@ h1 {
   background: #2a1a1a;
   border-radius: 8px;
   font-size: 0.9rem;
+}
+
+/* modal */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 360px;
+}
+
+.modal-content h2 {
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 12px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #eee;
+  font-size: 1rem;
+  margin-bottom: 16px;
+}
+
+.modal-content input:focus {
+  outline: none;
+  border-color: #555;
+}
+
+.modal-btns {
+  display: flex;
+  gap: 12px;
+}
+
+.cancel-btn, .submit-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #333;
+  color: #aaa;
+}
+
+.cancel-btn:hover {
+  background: #444;
+  color: #eee;
+}
+
+.submit-btn {
+  background: #3a5;
+  color: #fff;
+}
+
+.submit-btn:hover {
+  background: #4a6;
+}
+
+/* rooms modal */
+.modal-large {
+  max-width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.join-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.join-row input {
+  flex: 1;
+  padding: 10px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.join-row input:focus {
+  outline: none;
+  border-color: #555;
+}
+
+.join-row .submit-btn {
+  padding: 10px 16px;
+}
+
+.rooms-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: #222;
+  border-radius: 8px;
+}
+
+.room-info h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.room-meta {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.join-btn {
+  padding: 8px 16px;
+  background: #333;
+  color: #eee;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.join-btn:hover {
+  background: #444;
+}
+
+.empty {
+  text-align: center;
+  color: #666;
+  padding: 20px;
 }

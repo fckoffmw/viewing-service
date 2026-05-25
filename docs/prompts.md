@@ -8,6 +8,21 @@
 - всегда спрашивай разрешения для редактирования кода
 - мысли больше об архитектуре и высокоуровневых решениях чем об реализации
 - я должен больше иметь дела с кодом чем ты (фронтенд вероятно ты будешь писать много)
+- замечания к стилю: в случае return для ошибок ВСЕГДА добавлять отступ перед ним:
+```go
+// Bad:
+if err != nil {
+   log.Error()
+   return
+}
+
+// Good:
+if err != nil {
+   log.Error()
+
+   return
+}
+```
 
 Сейчас разберись с устройством сервиса, вникни в контекст и будь готов общаться дальше
 
@@ -29,6 +44,7 @@
 # docs 
 
 вникни в документацию, в структуру проекта и его нынешнее положение, приведи документацию к виду:
+- особенное внимание к api.md нужно КАЧЕСТВЕННО перепроверить и уточнить все поля ответов и статус коды
 - не правь документацию если логически это не требуется
 - исправь все опечатки
 - не используй много лишних слов (минимально пояснений)
@@ -45,6 +61,127 @@
 - советы только если они сильно улучшат понимание проекта (принцип YAGNI)
 
 # claude
+
+## basic context
+
+Ты — разработчик микросервисов на Go с опытом.
+Проект: w2g (watch together) — сервис для совместного просмотра видео с чатом.
+
+### Текущее состояние
+- Go 1.26, vanilla HTML/CSS/JS фронтенд
+- CSV хранилище (users, sources, rooms)
+- Session-based auth (bcrypt, in-memory sessions)
+- WebSocket чат
+- Мультикомнаты с invite-кодами
+- REST API на 8080 порту, статика через nginx
+
+### Структура проекта (Go)
+- cmd/w2g/main.go — точка входа
+- internal/auth — аутентификация, сессии
+- internal/chat — WebSocket hub + client
+- internal/room — управление комнатами
+- internal/source — источники видео (CRUD)
+- internal/repo — CSV хранилище (sync.RWMutex)
+- internal/config — конфиг из .env
+- internal/middleware — logging, auth
+
+### API endpoints
+- POST /auth/register, /auth/login, /auth/logout, GET /auth/me
+- GET/POST /api/sources
+- GET/POST /api/rooms, DELETE /api/rooms/{invite_code}, PATCH /api/rooms/{invite_code}/source
+- GET /ws/{invite_code} (WebSocket)
+- GET /healthz
+
+### Деплой
+- deploy.sh — systemd + nginx, без Docker
+- Бинарник: /usr/bin/w2g
+- Конфиг: /etc/w2g/.env
+- Логи: /var/log/w2g/w2g.log
+- Статика: /var/www/w2g
+
+### Ссылки
+- Архитектура: docs/arch.md
+- API: docs/api.md  
+- Auth: docs/auth.md
+
+### Файловая система
+
+├── cmd
+│   └── w2g
+│       └── main.go
+├── go.mod
+├── go.sum
+├── internal
+│   ├── auth
+│   │   ├── handler.go
+│   │   ├── handler_test.go
+│   │   ├── model.go
+│   │   ├── service.go
+│   │   ├── service_test.go
+│   │   ├── store.go
+│   │   └── store_test.go
+│   ├── chat
+│   │   ├── client.go
+│   │   ├── client_test.go
+│   │   └── hub.go
+│   ├── config
+│   │   └── config.go
+│   ├── errors
+│   │   ├── errors.go
+│   │   └── errors_test.go
+│   ├── http
+│   │   └── router.go
+│   ├── middleware
+│   │   ├── auth.go
+│   │   ├── logger.go
+│   │   └── writer.go
+│   ├── repo
+│   │   ├── repo.go
+│   │   └── repo_test.go
+│   ├── response
+│   │   └── response.go
+│   ├── room
+│   │   ├── handler.go
+│   │   ├── handler_test.go
+│   │   ├── model.go
+│   │   ├── service.go
+│   │   └── service_test.go
+│   └── source
+│       ├── handler.go
+│       ├── handler_test.go
+│       ├── model.go
+│       ├── service.go
+│       └── service_test.go
+├── storage
+│   ├── rooms.csv
+│   ├── sources.csv
+│   └── users.csv
+└── web
+        html + css + js
+
+FEATURE DESC
+
+## rooms feature
+
+Фича - наличие разделенных комнат с множеством участников (взамен 1 настоящей глобальной) и индивидуальным доступом по ссылке к каждой.
+
+Требуется:
+- иметь возможность создать комнату
+- иметь возможность получить ссылку для входа в комнату
+- иметь возможность общения в комнате не ограниченным количеством участников
+- (по возможности) предусмотреть введение синхронизации контента в комнате
+- разделять создателя комнаты и остальных участников
+
+Вопросы:
+- как хранится данная сущность (in-memory/persistent)? нужно определить плюсы и минусы подходов и выбрать
+- как встроить данную фичу в настоящую архитектуру проекта?
+- какие лучшие практики используются для реализации подобного?
+
+Сейчас:
+Составь полную спецификацию по данной фиче так, чтобы по ней можно было начать разработку
+Каждое решение должно быть обосновано и выбрано взвешенной оценкой плюсов и минусов
+
+## auth feature
 
 Проект: сервис для совместного просмотра видео
 
@@ -162,4 +299,3 @@
 - edge cases
 
 Так, чтобы это можно было напрямую использовать для реализации
-

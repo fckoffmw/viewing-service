@@ -28,12 +28,70 @@ body {
 .back-link {
   color: #888;
   text-decoration: none;
-  margin-bottom: 12px;
   font-size: 0.85rem;
 }
 
 .back-link:hover {
   color: #bbb;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.back-link {
+  white-space: nowrap;
+}
+
+.room-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #ccc;
+}
+
+.invite-code {
+  color: #555;
+  font-size: 0.8rem;
+  background: #222;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.change-source-btn {
+  padding: 4px 10px;
+  background: #2a2a2a;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.change-source-btn:hover {
+  background: #333;
+  color: #ccc;
+  border-color: #444;
+}
+
+.content-link {
+  color: #666;
+  text-decoration: none;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  background: #1a1a1a;
+  border-radius: 4px;
+  margin-left: auto;
+  transition: all 0.15s;
+}
+
+.content-link:hover {
+  color: #999;
+  background: #222;
 }
 
 #player-container {
@@ -171,4 +229,30 @@ body {
   #chat-form {
     flex-shrink: 0;
   }
+}
+
+/* source modal */
+.sources-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.source-item {
+  padding: 10px 12px;
+  background: #222;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.source-item:hover {
+  background: #333;
+}
+
+.source-item-active {
+  background: #2a3a2a;
+  color: #8c8;
 }

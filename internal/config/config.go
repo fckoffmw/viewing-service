@@ -8,34 +8,31 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func init() {
-	_ = godotenv.Load()
-}
-
 type Config struct {
 	Port                    string
 	StorageDir              string
-	MaxClients              int
 	LogLevel                string
 	LogFile                 string
 	SessionsCleanupInterval int
+	MaxRoomsPerUser         int
 }
 
 func Load() *Config {
+	_ = godotenv.Load()
 	return &Config{
 		Port:                    getEnv("PORT", "8080"),
 		StorageDir:              getEnv("STORAGE_DIR", "./storage/"),
-		MaxClients:              getEnvInt("MAX_CLIENTS", 2),
 		LogLevel:                getEnv("LOG_LEVEL", "debug"),
 		LogFile:                 getEnv("LOG_FILE", ""),
 		SessionsCleanupInterval: getEnvInt("SESSIONS_CLEANUP_INTERVAL", 300),
+		MaxRoomsPerUser:         getEnvInt("MAX_ROOMS_PER_USER", 10),
 	}
 }
 
 func (c *Config) PrettyPrint() string {
 	return fmt.Sprintf(
-		"Port=%s StorageDir=%s MaxClients=%d LogLevel=%s LogFile=%s SessionsCleanupInterval=%d",
-		c.Port, c.StorageDir, c.MaxClients, c.LogLevel, c.LogFile, c.SessionsCleanupInterval,
+		"Port=%s StorageDir=%s LogLevel=%s LogFile=%s SessionsCleanupInterval=%d MaxRoomsPerUser=%d",
+		c.Port, c.StorageDir, c.LogLevel, c.LogFile, c.SessionsCleanupInterval, c.MaxRoomsPerUser,
 	)
 }
 

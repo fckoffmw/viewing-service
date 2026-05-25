@@ -67,12 +67,14 @@ curl http://localhost:8080/api/sources
 
 ### Защищённый endpoint (с cookie)
 ```bash
-SESSION=$(curl -s -X POST http://localhost:8080/auth/login \
+# Login and save cookie to file
+curl -v -X POST http://localhost:8080/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"testuser","password":"testpass123"}' \
-  -c - | grep session_id | awk '{print $7}')
+  -c cookies.txt
 
-curl http://localhost:8080/api/sources -H "Cookie: session_id=$SESSION"
+# Use cookie for protected request
+curl http://localhost:8080/api/sources -b cookies.txt
 ```
 Ожидается: `200` + `[]`
 
@@ -109,12 +111,6 @@ curl -s -X POST http://localhost:8080/auth/login \
   -d '{"username":"testuser","password":"wrong"}'
 ```
 Ответ: `401` + `{"error":"invalid credentials"}`
-
-Публичная страница:
-```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/login.html
-```
-Ответ: `200`
 
 ## Зависимости
 

@@ -1,5 +1,9 @@
 # REST API
 
+Все ошибки возвращают `{"error": "..."}`.
+
+---
+
 ## Аутентификация
 
 ### POST /auth/register
@@ -8,10 +12,7 @@
 
 **Request:**
 ```json
-{
-  "username": "user123",
-  "password": "password123"
-}
+{"username": "user123", "password": "password123"}
 ```
 
 **Response 201:**
@@ -21,6 +22,9 @@
 **Response 400:**
 ```json
 {"error": "username cannot be empty"}
+{"error": "username must be at least 3 characters"}
+{"error": "password must be at least 4 characters"}
+{"error": "user already exists"}
 ```
 
 **Response 500:**
@@ -36,10 +40,7 @@
 
 **Request:**
 ```json
-{
-  "username": "user123",
-  "password": "password123"
-}
+{"username": "user123", "password": "password123"}
 ```
 
 **Response 200:**
@@ -69,7 +70,7 @@
 **Response 200:**
 ```json
 {
-  "id": "user-id",
+  "id": "1",
   "username": "user123"
 }
 ```
@@ -106,43 +107,135 @@
 
 **Request:**
 ```json
-{
-  "name": "Название",
-  "url": "https://..."
-}
+{"name": "Название", "url": "https://..."}
 ```
 
 **Response 201:**
 ```json
-{"id": "new-id"}
+{"id": "1"}
+```
+
+**Response 400:**
+```json
+{"error": "cannot read req body"}
+{"error": "name and url are required"}
 ```
 
 ---
 
-## Комната
+## Комнаты
 
-### GET /api/room
+### POST /api/rooms
 
-Информация о глобальной комнате. Защищённый endpoint.
+Создать комнату. Защищённый endpoint.
+
+**Request:**
+```json
+{"name": "Movie Night"}
+```
+
+**Response 201:**
+```json
+{
+  "id": "1",
+  "name": "Movie Night",
+  "invite_code": "X7K2PQ4M",
+  "invite_url": "/room/X7K2PQ4M",
+  "owner_id": "1",
+  "created_at": "2025-01-01T00:00:00Z"
+}
+```
+
+**Response 400:**
+```json
+{"error": "invalid request body"}
+{"error": "name is required"}
+{"error": "max rooms reached"}
+```
+
+---
+
+### GET /api/rooms
+
+Список всех комнат. Защищённый endpoint.
+
+**Response 200:**
+```json
+[
+  {
+    "id": "1",
+    "name": "Movie Night",
+    "invite_code": "X7K2PQ4M",
+    "owner_id": "1",
+    "members_online": 0,
+    "current_source": {
+      "id": "1",
+      "name": "Название",
+      "url": "https://..."
+    },
+    "created_at": "2025-01-01T00:00:00Z"
+  }
+]
+```
+
+Поле `current_source` присутствует только если для комнаты выбран источник.
+
+---
+
+### GET /api/rooms/{invite_code}
+
+Информация о комнате. Защищённый endpoint.
 
 **Response 200:**
 ```json
 {
   "id": "1",
-  "name": "global",
+  "name": "Movie Night",
+  "invite_code": "X7K2PQ4M",
+  "owner_id": "1",
+  "members_online": 0,
   "current_source": {
     "id": "1",
-    "name": "Семь (1995)",
-    "url": "https://vkvideo.ru/..."
-  }
+    "name": "Название",
+    "url": "https://..."
+  },
+  "created_at": "2025-01-01T00:00:00Z"
 }
+```
+
+Поле `current_source` присутствует только если для комнаты выбран источник.
+
+**Response 404:**
+```json
+{"error": "room not found"}
 ```
 
 ---
 
-### PATCH /api/room/source
+### DELETE /api/rooms/{invite_code}
 
-Установить активный источник. Защищённый endpoint.
+Удалить комнату. Только owner. Защищённый endpoint.
+
+**Response 200:**
+```json
+{"status": "deleted"}
+```
+
+**Response 403:**
+```json
+{"error": "not owner"}
+```
+
+**Response 404:**
+```json
+{"error": "room not found"}
+```
+
+---
+
+### PATCH /api/rooms/{invite_code}/source
+
+Установить активный источник. Только owner. Защищённый endpoint.
 
 **Request:**
 ```json
@@ -151,24 +244,55 @@
 
 **Response 200:**
 ```json
-{"id": "1"}
+{"source_id": "1"}
+```
+
+**Response 400:**
+```json
+{"error": "source not found"}
+```
+
+**Response 403:**
+```json
+{"error": "not owner"}
+```
+
+**Response 404:**
+```json
+{"error": "room not found"}
 ```
 
 ---
 
 ## WebSocket
 
-### GET /ws
+### GET /ws/{invite_code}
 
-Чат. Публичный endpoint.
+Чат комнаты. Защищённый endpoint (требует `session_id` cookie).
 
-**Сообщение:**
+**Клиент → сервер:**
+```json
+{"text": "Привет!"}
+```
+
+**Сервер → клиент (чат):**
+```json
+{"username": "user123", "text": "Привет!"}
+```
+
+**Сервер → клиент (смена источника):**
 ```json
 {
-  "username": "user123",
-  "text": "Привет!"
+  "type": "source_changed",
+  "payload": {
+    "source_id": "1",
+    "source_url": "https://..."
+  }
 }
 ```
+
+**Response 401 (неавторизован):**
+- `401 Unauthorized`
 
 ---
 
@@ -176,4 +300,4 @@
 
 ### X-Request-ID
 
-Идентификатор запроса (8 символов UUID) для трейсинга.
+Идентификатор запроса (8 символов, первая часть UUID) для трейсинга. Добавляется в каждый ответ.

@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"time"
 
-	apperrors "w2g/internal/errors"
+	"w2g/internal/apperrors"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,7 +30,7 @@ func ShortPassword() *apperrors.Error {
 type repository interface {
 	GetUserByUsername(username string) (*User, error)
 	GetUserByID(id string) (*User, error)
-	AddUser(user User) (string, error)
+	AddUser(user *User) (string, error)
 }
 
 type SessionStore interface {
@@ -91,7 +91,7 @@ func (s *service) Register(username, password string) (string, error) {
 
 	createdAt := time.Now()
 
-	userID, err := s.repo.AddUser(User{
+	userID, err := s.repo.AddUser(&User{
 		Username:     username,
 		PasswordHash: string(passHash),
 		CreatedAt:    createdAt,

@@ -4,19 +4,21 @@
 
 ### TODO
 
-- [ ] simple deploy
-- [ ] CSV storage — убрать reflect, использовать ручной маппинг или кодогенерацию
-- [ ] graceful shutdown для Hub
-- [ ] CORS middleware
+- [ ] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
 - [ ] sync
+  - [ ] чтобы страница обновлялась у всех при изменении источника
   - [ ] ws взаимодействие
   - [ ] nats
-- [ ] много комнат
 - [ ] разделение источников помимо VK
+- [ ] кеширование
 - [ ] auth more +
 
 ### DONE
 
+- [x] побольше логирования с разделением по уровням
+- [x] rooms: docs, review, tests
+- [x] много комнат
+- [x] simple deploy
 - [x] разгрузить main
 - [x] auth
 - [x] config
@@ -32,18 +34,3 @@
 - [x] auth — register/login/logout/me endpoints
 - [x] auth middleware
 - [x] login/register pages
-
-## Frontend
-
-### TODO
-
-- [ ] страница выбора контента — добавить проверку auth
-
-### DONE
-
-- [x] Landing page (index.html)
-- [x] Room page (room.html) — плеер + чат
-- [x] Content selection page (content.html)
-- [x] Login page (login.html)
-- [x] Register page (register.html)
-- [x] CSS для всех страниц

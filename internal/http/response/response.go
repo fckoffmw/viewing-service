@@ -37,10 +37,14 @@ func WriteUnauthorized(w http.ResponseWriter, err string) {
 	WriteError(w, http.StatusUnauthorized, err)
 }
 
+func WriteForbidden(w http.ResponseWriter, err string) {
+	WriteError(w, http.StatusForbidden, err)
+}
+
+func WriteNotFound(w http.ResponseWriter, err string) {
+	WriteError(w, http.StatusNotFound, err)
+}
+
 func WriteInternalError(w http.ResponseWriter, err string) {
 	WriteError(w, http.StatusInternalServerError, err)
 }
-
-// Re-export commonly used types for convenience
-type ResponseWriter = http.ResponseWriter
-type Request = http.Request

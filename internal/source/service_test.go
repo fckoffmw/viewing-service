@@ -21,18 +21,18 @@ func (m *mockRepo) GetAllSources() ([]Source, error) {
 	return m.sources, nil
 }
 
-func (m *mockRepo) AddSource(s Source) (string, error) {
+func (m *mockRepo) AddSource(s *Source) (string, error) {
 	if m.err != nil {
 		return "", m.err
 	}
 	m.nextID++
 	id := strconv.Itoa(m.nextID)
 	s.ID = id
-	m.sources = append(m.sources, s)
+	m.sources = append(m.sources, *s)
 	return id, nil
 }
 
-func TestServiceGetAllSources(t *testing.T) {
+func TestServiceGetAll(t *testing.T) {
 	tests := []struct {
 		name      string
 		sources   []Source
@@ -50,7 +50,7 @@ func TestServiceGetAllSources(t *testing.T) {
 		{
 			name: "one source",
 			sources: []Source{
-				{ID: "1", Name: "Film", Url: "http://vk.com/1"},
+				{ID: "1", Name: "Film", URL: "http://vk.com/1"},
 			},
 			wantLen:   1,
 			wantFirst: "Film",
@@ -59,8 +59,8 @@ func TestServiceGetAllSources(t *testing.T) {
 		{
 			name: "multiple sources",
 			sources: []Source{
-				{ID: "1", Name: "Film1", Url: "http://vk.com/1"},
-				{ID: "2", Name: "Film2", Url: "http://vk.com/2"},
+				{ID: "1", Name: "Film1", URL: "http://vk.com/1"},
+				{ID: "2", Name: "Film2", URL: "http://vk.com/2"},
 			},
 			wantLen:   2,
 			wantFirst: "Film1",
@@ -80,7 +80,7 @@ func TestServiceGetAllSources(t *testing.T) {
 			repo := &mockRepo{sources: tt.sources, err: tt.wantErr}
 			svc := NewService(repo)
 
-			got, err := svc.GetAllSources()
+			got, err := svc.GetAll()
 
 			if tt.wantErr != nil {
 				if err == nil {
@@ -101,7 +101,7 @@ func TestServiceGetAllSources(t *testing.T) {
 	}
 }
 
-func TestServiceAddSource(t *testing.T) {
+func TestServiceAdd(t *testing.T) {
 	tests := []struct {
 		name    string
 		sources []Source
@@ -112,7 +112,7 @@ func TestServiceAddSource(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			sources: []Source{{ID: "1", Name: "Film", Url: "http://vk.com/1"}},
+			sources: []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
 			newName: "New Film",
 			newURL:  "http://vk.com/2",
 			wantID:  "2",
@@ -141,7 +141,7 @@ func TestServiceAddSource(t *testing.T) {
 			repo := &mockRepo{sources: tt.sources, nextID: len(tt.sources), err: tt.wantErr}
 			svc := NewService(repo)
 
-			got, err := svc.AddSource(tt.newName, tt.newURL)
+			got, err := svc.Add(tt.newName, tt.newURL)
 
 			if tt.wantErr != nil {
 				if err == nil {

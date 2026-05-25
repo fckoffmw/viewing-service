@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	apperrors "w2g/internal/errors"
-	"w2g/internal/response"
+	"w2g/internal/apperrors"
+	"w2g/internal/http/response"
 )
 
 type Service interface {
@@ -34,7 +34,7 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 	}
 }
 
-func (h handler) Login(w http.ResponseWriter, r *http.Request) {
+func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
 	var creds credentials
@@ -43,6 +43,7 @@ func (h handler) Login(w http.ResponseWriter, r *http.Request) {
 		response.WriteBadRequest(w, "cannot read req body")
 		return
 	}
+	r.Body.Close()
 
 	sessionID, err := h.service.Login(creds.Username, creds.Password)
 	if err != nil {
@@ -64,7 +65,7 @@ func (h handler) Login(w http.ResponseWriter, r *http.Request) {
 	response.WriteOK(w, nil)
 }
 
-func (h handler) Register(w http.ResponseWriter, r *http.Request) {
+func (h *handler) Register(w http.ResponseWriter, r *http.Request) {
 	requestID, _ := r.Context().Value("request_id").(string)
 
 	var creds credentials
@@ -73,6 +74,7 @@ func (h handler) Register(w http.ResponseWriter, r *http.Request) {
 		response.WriteBadRequest(w, "cannot read req body")
 		return
 	}
+	r.Body.Close()
 
 	sessionID, err := h.service.Register(creds.Username, creds.Password)
 	if err != nil {
@@ -94,7 +96,7 @@ func (h handler) Register(w http.ResponseWriter, r *http.Request) {
 	response.WriteCreated(w, nil)
 }
 
-func (h handler) Logout(w http.ResponseWriter, r *http.Request) {
+func (h *handler) Logout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
@@ -107,7 +109,7 @@ func (h handler) Logout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (h handler) Me(w http.ResponseWriter, r *http.Request) {
+func (h *handler) Me(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
 		response.WriteUnauthorized(w, "session not found")
@@ -132,11 +134,7 @@ type MeResponse struct {
 }
 
 func decodeJSON(r *http.Request, v any) error {
-	err := json.NewDecoder(r.Body).Decode(v)
-	if err != nil {
-		return err
-	}
-	return r.Body.Close()
+	return json.NewDecoder(r.Body).Decode(v)
 }
 
 func setSessionCookie(w http.ResponseWriter, value string) {

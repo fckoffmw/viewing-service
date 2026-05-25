@@ -7,14 +7,45 @@
   <link rel="stylesheet" href="/static/index.css">
 </head>
 <body>
+  <header class="header">
+    <div class="header-left">
+      <h1 class="logo">w2g</h1>
+      <span id="user-greeting" class="user-greeting" style="display:none">Привет, <span id="username"></span></span>
+    </div>
+    <button onclick="logout()" id="logout-btn" class="logout-btn" style="display:none">Выход</button>
+  </header>
+
   <div class="container">
-    <h1>w2g</h1>
     <div class="buttons">
       <a href="/content.html" class="btn">К контенту</a>
-      <a href="/room.html" class="btn">К комнате</a>
+      <button onclick="openRoomsModal()" class="btn">Доступные комнаты</button>
+      <button onclick="openCreateModal()" class="btn">Создать комнату</button>
     </div>
-    <p class="user-info" id="user-info" style="display:none">Привет, <span id="username"></span>!</p>
-    <button onclick="logout()" class="logout-btn" id="logout-btn" style="display:none">Выход</button>
+  </div>
+
+  <div id="create-modal" class="modal" style="display:none">
+    <div class="modal-content">
+      <h2>Создать комнату</h2>
+      <form id="create-form">
+        <input type="text" id="room-name" placeholder="Название комнаты" required>
+        <div class="modal-btns">
+          <button type="button" onclick="closeCreateModal()" class="cancel-btn">Отмена</button>
+          <button type="submit" class="submit-btn">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="rooms-modal" class="modal" style="display:none">
+    <div class="modal-content modal-large">
+      <h2>Доступные комнаты</h2>
+      <div class="join-row">
+        <input type="text" id="join-code" placeholder="Код комнаты">
+        <button onclick="joinByCode()" class="submit-btn">Войти</button>
+      </div>
+      <div id="rooms-list" class="rooms-list"></div>
+      <button onclick="closeRoomsModal()" class="cancel-btn" style="width:100%;margin-top:12px">Закрыть</button>
+    </div>
   </div>
 
   <script>
@@ -25,7 +56,7 @@
       if (res.ok) {
         var user = await res.json();
         document.getElementById("username").textContent = user.username;
-        document.getElementById("user-info").style.display = "block";
+        document.getElementById("user-greeting").style.display = "inline";
         document.getElementById("logout-btn").style.display = "block";
       } else {
         window.location.href = "/login.html";
@@ -35,6 +66,85 @@
     async function logout() {
       await fetch("/auth/logout", { method: "POST" });
       window.location.href = "/login.html";
+    }
+
+    function openCreateModal() {
+      document.getElementById("create-modal").style.display = "flex";
+      document.getElementById("room-name").value = "";
+      document.getElementById("room-name").focus();
+    }
+
+    function closeCreateModal() {
+      document.getElementById("create-modal").style.display = "none";
+    }
+
+    document.getElementById("create-form").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      var name = document.getElementById("room-name").value.trim();
+      if (!name) return;
+
+      var res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name }),
+      });
+
+      var data = await res.json();
+      if (res.ok) {
+        closeCreateModal();
+        window.location.href = "/room.html?invite=" + data.invite_code;
+      } else {
+        alert("Ошибка: " + (data.error || "не удалось создать комнату"));
+      }
+    });
+
+    function openRoomsModal() {
+      document.getElementById("rooms-modal").style.display = "flex";
+      loadRooms();
+    }
+
+    function closeRoomsModal() {
+      document.getElementById("rooms-modal").style.display = "none";
+    }
+
+    async function loadRooms() {
+      var container = document.getElementById("rooms-list");
+      try {
+        var res = await fetch("/api/rooms");
+        var rooms = await res.json();
+        if (!res.ok || rooms.length === 0) {
+          container.innerHTML = "<p class='empty'>Пока нет доступных комнат</p>";
+          return;
+        }
+        container.innerHTML = rooms.map(function(r) {
+          var source = r.current_source ? r.current_source.name : "—";
+          var members = r.members_online || 0;
+          return (
+            '<div class="room-card">' +
+              '<div class="room-info">' +
+                '<h3>' + esc(r.name) + '</h3>' +
+                '<span class="room-meta">Источник: ' + esc(source) + ' | Участников: ' + members + '</span>' +
+              '</div>' +
+              '<a href="/room.html?invite=' + r.invite_code + '" class="join-btn">Подключиться</a>' +
+            '</div>'
+          );
+        }).join("");
+      } catch {
+        container.innerHTML = "<p class='error'>Не удалось загрузить</p>";
+      }
+    }
+
+    function joinByCode() {
+      var code = document.getElementById("join-code").value.trim().toUpperCase();
+      if (!code) return;
+      closeRoomsModal();
+      window.location.href = "/room.html?invite=" + code;
+    }
+
+    function esc(s) {
+      var d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
     }
   </script>
 </body>

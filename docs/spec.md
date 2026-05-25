@@ -5,14 +5,15 @@
 ## Функциональность
 
 - Iframe-плеер (VK)
-- Чат через WebSocket (2 участника)
+- Чат через WebSocket
 - Аутентификация (session-based)
+- Мультикомнаты с invite-кодами
 
 ## Стек
 
 | Компонент | Технология |
 |-----------|------------|
-| Backend | Go |
+| Backend | Go 1.26+ |
 | Frontend | HTML, CSS, JS (vanilla) |
 | Хранилище | CSV файлы |
 | Сессии | in-memory |
@@ -37,8 +38,11 @@
 ### Room
 | Поле | Тип | Описание |
 |------|-----|----------|
-| `id` | string | ID комнаты |
-| `source_id` | string | ID источника |
+| `id` | string | Порядковый номер |
+| `name` | string | Название комнаты |
+| `owner_id` | string | ID владельца |
+| `invite_code` | string | Код для приглашения (8 символов) |
+| `created_at` | time | Время создания |
 
 ### Session
 | Поле | Тип | Описание |
