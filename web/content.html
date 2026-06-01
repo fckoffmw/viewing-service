@@ -4,97 +4,87 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>w2g — Контент</title>
-  <link rel="stylesheet" href="/static/content.css">
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <div class="container">
-    <h1><a href="/index.html">w2g</a> — <span id="room-title">Контент</span></h1>
-    <div class="header-row">
-      <a href="/room.html" id="room-link" class="header-btn" style="display:none">В комнату</a>
-      <button onclick="openModal()" class="header-btn primary">+ Добавить</button>
-      <button onclick="logout()" class="header-btn">Выход</button>
+  <nav class="nav">
+    <div class="nav-left">
+      <a href="/" class="nav-logo">w2g</a>
+      <a href="/index.html" class="nav-link">Комнаты</a>
+      <a href="/content.html" class="nav-link active">Контент</a>
     </div>
-    <div id="sources"></div>
+    <div class="nav-right">
+      <span class="nav-username" id="nav-username"></span>
+      <button onclick="logout()" class="btn btn-secondary btn-sm">Выйти</button>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-header">
+      <h1 class="page-title">Контент</h1>
+      <div style="display:flex;gap:8px">
+        <a id="room-link" href="#" style="display:none" class="btn btn-secondary">В комнату</a>
+        <button onclick="openAddModal()" class="btn btn-primary">+ Добавить</button>
+      </div>
+    </div>
+
+    <div id="sources-container"></div>
   </div>
 
-  <div id="modal" class="modal" style="display:none">
-    <div class="modal-content">
+  <!-- add modal -->
+  <div id="add-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeAddModal()">
+    <div class="modal">
       <h2>Добавить источник</h2>
       <form id="add-form">
-        <input type="text" id="source-name" placeholder="Название" required>
-        <input type="text" id="source-url" placeholder="URL iframe" required>
+        <input type="text" id="source-name" placeholder="Название" required class="modal-input">
+        <input type="text" id="source-url" placeholder="URL iframe" required class="modal-input">
         <div class="modal-btns">
-          <button type="button" onclick="closeModal()" class="cancel-btn">Отмена</button>
-          <button type="submit" class="submit-btn">Добавить</button>
+          <button type="button" onclick="closeAddModal()" class="btn btn-secondary">Отмена</button>
+          <button type="submit" class="btn btn-primary">Добавить</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
-    // --- get invite code from URL ---
-    function getInviteCode() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("invite");
-    }
+    var currentUserId = "";
+    var currentUsername = "";
+    var inviteCode = "";
+    var activeSourceId = null;
 
-    var inviteCode = getInviteCode();
+    var params = new URLSearchParams(window.location.search);
+    inviteCode = params.get("invite");
+
     if (inviteCode) {
       document.getElementById("room-link").href = "/room.html?invite=" + inviteCode;
-      document.getElementById("room-link").style.display = "inline-block";
+      document.getElementById("room-link").style.display = "inline-flex";
     }
 
-    // --- auth check ---
-    var currentUserId = "";
+    // --- auth ---
+    checkAuth();
 
     async function checkAuth() {
-      var res = await fetch("/auth/me");
-      if (!res.ok) {
-        window.location.href = "/login.html";
-        return false;
-      }
-      var user = await res.json();
-      currentUserId = user.id;
-      return true;
-    }
-
-    var activeSourceId = null;
-    var isOwner = false;
-
-    function openModal() {
-      document.getElementById("modal").style.display = "flex";
-      document.getElementById("source-name").value = "";
-      document.getElementById("source-url").value = "";
-      document.getElementById("source-name").focus();
-    }
-
-    function closeModal() {
-      document.getElementById("modal").style.display = "none";
-    }
-
-    document.getElementById("add-form").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      var name = document.getElementById("source-name").value.trim();
-      var url = document.getElementById("source-url").value.trim();
-      if (!name || !url) return;
-
-      var res = await fetch("/api/sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name, url: url }),
-      });
-
-      var data = await res.json();
-      if (res.ok) {
-        closeModal();
+      try {
+        var res = await fetch("/auth/me");
+        if (!res.ok) { window.location.href = "/login.html"; return; }
+        var user = await res.json();
+        currentUserId = user.id;
+        currentUsername = user.username;
+        document.getElementById("nav-username").textContent = user.username;
         loadSources();
-      } else {
-        alert("Ошибка: " + data.error);
+      } catch {
+        window.location.href = "/login.html";
       }
-    });
+    }
 
+    async function logout() {
+      await fetch("/auth/logout", { method: "POST" });
+      window.location.href = "/login.html";
+    }
+
+    // --- load sources ---
     async function loadSources() {
-      var container = document.getElementById("sources");
+      var container = document.getElementById("sources-container");
 
       if (inviteCode) {
         try {
@@ -104,89 +94,128 @@
             if (room.current_source) {
               activeSourceId = room.current_source.id;
             }
-            document.getElementById("room-title").textContent = room.name || "Контент";
           }
         } catch {}
       }
 
-      var res;
       try {
-        res = await fetch("/api/sources");
-      } catch {
-        container.innerHTML = '<p class="error">Не удалось загрузить</p>';
-        return;
-      }
-
-      if (!res.ok) {
-        container.innerHTML = '<p class="error">Ошибка сервера</p>';
-        return;
-      }
-
-      var sources = await res.json();
-      if (sources.length === 0) {
-        container.innerHTML = '<p>Пока пусто</p>';
-        return;
-      }
-
-      container.innerHTML = sources
-        .map(function(s) {
+        var res = await fetch("/api/sources");
+        if (!res.ok) {
+          container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+          return;
+        }
+        var sources = await res.json();
+        if (sources.length === 0) {
+          container.innerHTML = '<div class="empty">Нет источников. Добавьте первый.</div>';
+          return;
+        }
+        container.innerHTML = sources.map(function(s) {
           var isActive = s.id === activeSourceId;
-          var badge = isActive ? '<span class="badge">активен</span>' : '';
-          var cardClass = isActive ? 'source-card source-card-active' : 'source-card';
-          var btnDisabled = (!inviteCode || isActive) ? 'disabled' : '';
-          var btnText = isActive ? 'Активен' : 'Сделать активным';
+          var activeClass = isActive ? " source-item-active" : "";
+          var activeBtn = "";
+          if (inviteCode) {
+            var disabled = isActive ? " disabled" : "";
+            var label = isActive ? "Активен" : "Сделать активным";
+            activeBtn = '<button onclick="setActive(\'' + s.id + '\')" class="btn btn-primary btn-sm"' + disabled + ">" + label + "</button>";
+          }
           return (
-            '<div class="' + cardClass + '">' +
-              '<div class="source-info">' +
-                '<h2>' + esc(s.name) + ' ' + badge + '</h2>' +
-                '<span class="source-id">id: ' + esc(s.id) + '</span>' +
+            '<div class="source-item' + activeClass + '">' +
+              '<div class="source-item-info">' +
+                '<div class="source-item-name">' + esc(s.name) + '</div>' +
+                '<div class="source-item-url">' + esc(s.url) + '</div>' +
               '</div>' +
-              (inviteCode ? '<button onclick="setActive(\'' + s.id + '\')" class="set-active-btn" ' + btnDisabled + '>' + btnText + '</button>' : '') +
+              '<div class="source-item-actions">' +
+                activeBtn +
+                '<button onclick="editSource(\'' + s.id + '\')" class="btn btn-secondary btn-sm">✎</button>' +
+                '<button onclick="deleteSource(\'' + s.id + '\', \'' + esc(s.name) + '\')" class="btn btn-danger btn-sm">✕</button>' +
+              '</div>' +
             '</div>'
           );
-        })
-        .join("");
+        }).join("");
+      } catch {
+        container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+      }
     }
 
+    // --- add source ---
+    function openAddModal() {
+      document.getElementById("add-modal").style.display = "flex";
+      document.getElementById("source-name").value = "";
+      document.getElementById("source-url").value = "";
+      document.getElementById("source-name").focus();
+    }
+
+    function closeAddModal() {
+      document.getElementById("add-modal").style.display = "none";
+    }
+
+    document.getElementById("add-form").addEventListener("submit", async function(e) {
+      e.preventDefault();
+      var name = document.getElementById("source-name").value.trim();
+      var url = document.getElementById("source-url").value.trim();
+      if (!name || !url) return;
+
+      try {
+        var res = await fetch("/api/sources", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: name, url: url }),
+        });
+        if (res.ok) {
+          closeAddModal();
+          loadSources();
+        } else {
+          var data = await res.json();
+          showToast("Ошибка: " + (data.error || "неизвестная"));
+        }
+      } catch {
+        showToast("Ошибка сети");
+      }
+    });
+
+    // --- set active ---
     async function setActive(id) {
       if (!inviteCode) return;
-
       try {
         var res = await fetch("/api/rooms/" + inviteCode + "/source", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ source_id: id }),
         });
-
-        var data = await res.json();
-
         if (res.ok) {
           loadSources();
         } else {
-          alert("Ошибка: " + data.error);
+          var data = await res.json();
+          showToast("Ошибка: " + (data.error || "неизвестная"));
         }
       } catch {
-        alert("Не удалось обновить источник");
+        showToast("Ошибка сети");
       }
     }
 
+    // --- stubs ---
+    function editSource(id) {
+      showToast("Редактирование — будет позже");
+    }
+
+    function deleteSource(id, name) {
+      showToast("Удаление — будет позже");
+    }
+
+    // --- utils ---
     function esc(s) {
       var d = document.createElement("div");
       d.textContent = s;
       return d.innerHTML;
     }
 
-    async function logout() {
-      await fetch("/auth/logout", { method: "POST" });
-      window.location.href = "/login.html";
+    function showToast(msg) {
+      var t = document.createElement("div");
+      t.className = "toast";
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function() { t.remove(); }, 2500);
     }
-
-    // Start
-    checkAuth().then(function(ok) {
-      if (ok) {
-        loadSources();
-      }
-    });
   </script>
 </body>
 </html>

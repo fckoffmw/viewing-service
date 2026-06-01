@@ -4,49 +4,65 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>w2g — Регистрация</title>
-  <link rel="stylesheet" href="/static/index.css">
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <div class="container">
+  <nav class="auth-nav">
+    <a href="/">w2g</a>
+  </nav>
+
+  <div class="auth-form">
     <h1>Регистрация</h1>
-    <form id="register-form" class="form">
-      <input type="text" id="username" placeholder="Имя пользователя" required minlength="3">
-      <input type="password" id="password" placeholder="Пароль" required minlength="4">
-      <button type="submit" class="btn">Зарегистрироваться</button>
+    <form id="register-form">
+      <input type="text" id="username" placeholder="Имя пользователя" required minlength="3" autocomplete="username" class="auth-input">
+      <input type="password" id="password" placeholder="Пароль" required minlength="4" autocomplete="new-password" class="auth-input">
+      <button type="submit" class="auth-btn">Зарегистрироваться</button>
     </form>
-    <p class="switch">Есть аккаунт? <a href="/login.html">Вход</a></p>
-    <p id="error" class="error" style="display:none"></p>
+    <div id="error" class="auth-error"></div>
+    <p class="auth-switch">Есть аккаунт? <a href="/login.html">Вход</a></p>
   </div>
 
   <script>
-    // Check if already logged in - redirect to index
-    (async function() {
-      var res = await fetch("/auth/me");
-      if (res.ok) {
-        window.location.href = "/index.html";
+    (async function checkAlreadyLogged() {
+      try {
+        var res = await fetch('/auth/me')
+        if (res.ok) window.location.href = '/index.html'
+      } catch {}
+    })()
+
+    document.getElementById('register-form').addEventListener('submit', async function (e) {
+      e.preventDefault()
+      var username = document.getElementById('username').value.trim()
+      var password = document.getElementById('password').value
+      var errorEl = document.getElementById('error')
+      var btn = this.querySelector('button')
+
+      errorEl.style.display = 'none'
+      btn.disabled = true
+      btn.textContent = 'Регистрация...'
+
+      try {
+        var res = await fetch('/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: username, password: password }),
+        })
+        var data = await res.json()
+
+        if (res.ok) {
+          window.location.href = '/index.html'
+          return
+        }
+        errorEl.textContent = data.error || 'Ошибка регистрации'
+        errorEl.style.display = 'block'
+      } catch {
+        errorEl.textContent = 'Ошибка соединения'
+        errorEl.style.display = 'block'
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Зарегистрироваться'
       }
-    })();
-
-    document.getElementById("register-form").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      var username = document.getElementById("username").value.trim();
-      var password = document.getElementById("password").value;
-      var errorEl = document.getElementById("error");
-
-      var res = await fetch("/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username, password: password }),
-      });
-
-      var data = await res.json();
-      if (res.ok) {
-        window.location.href = "/index.html";
-      } else {
-        errorEl.textContent = data.error || "Ошибка регистрации";
-        errorEl.style.display = "block";
-      }
-    });
+    })
   </script>
 </body>
 </html>

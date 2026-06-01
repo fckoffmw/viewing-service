@@ -3,148 +3,202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>w2g</title>
-  <link rel="stylesheet" href="/static/index.css">
+  <title>w2g — Комнаты</title>
+  <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <header class="header">
-    <div class="header-left">
-      <h1 class="logo">w2g</h1>
-      <span id="user-greeting" class="user-greeting" style="display:none">Привет, <span id="username"></span></span>
+  <nav class="nav">
+    <div class="nav-left">
+      <a href="/" class="nav-logo">w2g</a>
+      <a href="/index.html" class="nav-link active">Комнаты</a>
+      <a href="/content.html" class="nav-link">Контент</a>
     </div>
-    <button onclick="logout()" id="logout-btn" class="logout-btn" style="display:none">Выход</button>
-  </header>
+    <div class="nav-right">
+      <span class="nav-username" id="nav-username"></span>
+      <button onclick="logout()" class="btn btn-secondary btn-sm">Выйти</button>
+    </div>
+  </nav>
 
-  <div class="container">
-    <div class="buttons">
-      <a href="/content.html" class="btn">К контенту</a>
-      <button onclick="openRoomsModal()" class="btn">Доступные комнаты</button>
-      <button onclick="openCreateModal()" class="btn">Создать комнату</button>
+  <div class="page">
+    <div class="page-header">
+      <h1 class="page-title">Комнаты</h1>
+      <button onclick="openCreateModal()" class="btn btn-primary">+ Создать</button>
     </div>
+
+    <div class="join-row">
+      <input type="text" id="join-code" placeholder="Код комнаты" maxlength="8" onkeydown="if(event.key==='Enter')joinByCode()">
+      <button onclick="joinByCode()" class="btn btn-secondary">Войти</button>
+    </div>
+
+    <div id="rooms-container"></div>
   </div>
 
-  <div id="create-modal" class="modal" style="display:none">
-    <div class="modal-content">
+  <!-- create modal -->
+  <div id="create-modal" class="modal-overlay" style="display:none" onclick="if(event.target===this)closeCreateModal()">
+    <div class="modal">
       <h2>Создать комнату</h2>
-      <form id="create-form">
-        <input type="text" id="room-name" placeholder="Название комнаты" required>
+      <form id="create-form" onsubmit="return handleCreate(event)">
+        <input type="text" id="room-name" placeholder="Название комнаты" required class="modal-input">
         <div class="modal-btns">
-          <button type="button" onclick="closeCreateModal()" class="cancel-btn">Отмена</button>
-          <button type="submit" class="submit-btn">Создать</button>
+          <button type="button" onclick="closeCreateModal()" class="btn btn-secondary">Отмена</button>
+          <button type="submit" class="btn btn-primary">Создать</button>
         </div>
       </form>
     </div>
   </div>
 
-  <div id="rooms-modal" class="modal" style="display:none">
-    <div class="modal-content modal-large">
-      <h2>Доступные комнаты</h2>
-      <div class="join-row">
-        <input type="text" id="join-code" placeholder="Код комнаты">
-        <button onclick="joinByCode()" class="submit-btn">Войти</button>
-      </div>
-      <div id="rooms-list" class="rooms-list"></div>
-      <button onclick="closeRoomsModal()" class="cancel-btn" style="width:100%;margin-top:12px">Закрыть</button>
-    </div>
-  </div>
-
   <script>
-    checkAuth();
+    var currentUserId = ''
+    var currentUsername = ''
+
+    checkAuth()
 
     async function checkAuth() {
-      var res = await fetch("/auth/me");
-      if (res.ok) {
-        var user = await res.json();
-        document.getElementById("username").textContent = user.username;
-        document.getElementById("user-greeting").style.display = "inline";
-        document.getElementById("logout-btn").style.display = "block";
-      } else {
-        window.location.href = "/login.html";
+      try {
+        var res = await fetch('/auth/me')
+        if (!res.ok) { window.location.href = '/login.html'; return }
+        var user = await res.json()
+        currentUserId = user.id
+        currentUsername = user.username
+        document.getElementById('nav-username').textContent = user.username
+        loadRooms()
+      } catch {
+        window.location.href = '/login.html'
       }
     }
 
     async function logout() {
-      await fetch("/auth/logout", { method: "POST" });
-      window.location.href = "/login.html";
+      await fetch('/auth/logout', { method: 'POST' })
+      window.location.href = '/login.html'
     }
 
-    function openCreateModal() {
-      document.getElementById("create-modal").style.display = "flex";
-      document.getElementById("room-name").value = "";
-      document.getElementById("room-name").focus();
-    }
-
-    function closeCreateModal() {
-      document.getElementById("create-modal").style.display = "none";
-    }
-
-    document.getElementById("create-form").addEventListener("submit", async function(e) {
-      e.preventDefault();
-      var name = document.getElementById("room-name").value.trim();
-      if (!name) return;
-
-      var res = await fetch("/api/rooms", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name }),
-      });
-
-      var data = await res.json();
-      if (res.ok) {
-        closeCreateModal();
-        window.location.href = "/room.html?invite=" + data.invite_code;
-      } else {
-        alert("Ошибка: " + (data.error || "не удалось создать комнату"));
-      }
-    });
-
-    function openRoomsModal() {
-      document.getElementById("rooms-modal").style.display = "flex";
-      loadRooms();
-    }
-
-    function closeRoomsModal() {
-      document.getElementById("rooms-modal").style.display = "none";
-    }
-
+    // --- rooms ---
     async function loadRooms() {
-      var container = document.getElementById("rooms-list");
+      var container = document.getElementById('rooms-container')
+      container.innerHTML = '<div class="empty">Загрузка...</div>'
+
       try {
-        var res = await fetch("/api/rooms");
-        var rooms = await res.json();
-        if (!res.ok || rooms.length === 0) {
-          container.innerHTML = "<p class='empty'>Пока нет доступных комнат</p>";
-          return;
-        }
-        container.innerHTML = rooms.map(function(r) {
-          var source = r.current_source ? r.current_source.name : "—";
-          var members = r.members_online || 0;
-          return (
-            '<div class="room-card">' +
-              '<div class="room-info">' +
-                '<h3>' + esc(r.name) + '</h3>' +
-                '<span class="room-meta">Источник: ' + esc(source) + ' | Участников: ' + members + '</span>' +
-              '</div>' +
-              '<a href="/room.html?invite=' + r.invite_code + '" class="join-btn">Подключиться</a>' +
-            '</div>'
-          );
-        }).join("");
+        var res = await fetch('/api/rooms')
+        if (!res.ok) { container.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
+        var rooms = await res.json()
+        renderRooms(rooms)
       } catch {
-        container.innerHTML = "<p class='error'>Не удалось загрузить</p>";
+        container.innerHTML = '<div class="empty">Ошибка соединения</div>'
       }
     }
 
-    function joinByCode() {
-      var code = document.getElementById("join-code").value.trim().toUpperCase();
-      if (!code) return;
-      closeRoomsModal();
-      window.location.href = "/room.html?invite=" + code;
+    function renderRooms(rooms) {
+      var container = document.getElementById('rooms-container')
+
+      if (rooms.length === 0) {
+        container.innerHTML = '<div class="empty">Нет комнат. Создайте первую.</div>'
+        return
+      }
+
+      container.innerHTML = rooms.map(function (r) {
+        var source = r.current_source ? r.current_source.name : '\u2014'
+        var members = r.members_online || 0
+        var isOwner = r.owner_id === currentUserId
+        return (
+          '<div class="room-item">' +
+            '<div class="room-info">' +
+              '<h3>' + esc(r.name) + '</h3>' +
+              '<div class="room-meta">' + esc(source) + ' \u00b7 ' + members + ' онлайн \u00b7 <span class="room-code" onclick="copyInvite(\'' + r.invite_code + '\')" title="Копировать ссылку">' + r.invite_code + '</span></div>' +
+            '</div>' +
+            '<div class="room-actions">' +
+              '<a href="/room.html?invite=' + r.invite_code + '" class="btn btn-primary btn-sm">Войти</a>' +
+              (isOwner ? '<button onclick="deleteRoom(\'' + r.invite_code + '\',\'' + esc(r.name) + '\')" class="btn btn-danger btn-sm">\u2715</button>' : '') +
+            '</div>' +
+          '</div>'
+        )
+      }).join('')
     }
 
     function esc(s) {
-      var d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
+      var d = document.createElement('div')
+      d.textContent = s
+      return d.innerHTML
+    }
+
+    function copyInvite(code) {
+      var url = window.location.origin + '/room.html?invite=' + code
+      navigator.clipboard.writeText(url).then(function () {
+        showToast('Ссылка скопирована')
+      })
+    }
+
+    // --- create room ---
+    function openCreateModal() {
+      document.getElementById('create-modal').style.display = 'flex'
+      document.getElementById('room-name').value = ''
+      document.getElementById('room-name').focus()
+    }
+
+    function closeCreateModal() {
+      document.getElementById('create-modal').style.display = 'none'
+    }
+
+    async function handleCreate(e) {
+      e.preventDefault()
+      var name = document.getElementById('room-name').value.trim()
+      if (!name) return
+
+      var btn = e.target.querySelector('button[type="submit"]')
+      btn.disabled = true
+      btn.textContent = 'Создание...'
+
+      try {
+        var res = await fetch('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name }),
+        })
+        var data = await res.json()
+        if (res.ok) {
+          closeCreateModal()
+          window.location.href = '/room.html?invite=' + data.invite_code
+        } else {
+          alert(data.error || 'Ошибка создания')
+        }
+      } catch {
+        alert('Ошибка соединения')
+      } finally {
+        btn.disabled = false
+        btn.textContent = 'Создать'
+      }
+    }
+
+    // --- join ---
+    function joinByCode() {
+      var code = document.getElementById('join-code').value.trim().toUpperCase()
+      if (!code) return
+      window.location.href = '/room.html?invite=' + code
+    }
+
+    // --- delete room ---
+    async function deleteRoom(code, name) {
+      if (!confirm('Удалить комнату "' + name + '"? Это действие нельзя отменить.')) return
+      try {
+        var res = await fetch('/api/rooms/' + code, { method: 'DELETE' })
+        if (res.ok) {
+          loadRooms()
+          showToast('Комната удалена')
+        } else {
+          var data = await res.json()
+          alert(data.error || 'Ошибка удаления')
+        }
+      } catch {
+        alert('Ошибка соединения')
+      }
+    }
+
+    // --- toast ---
+    function showToast(msg) {
+      var el = document.createElement('div')
+      el.textContent = msg
+      el.className = 'toast'
+      document.body.appendChild(el)
+      setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove() }, 300) }, 2000)
     }
   </script>
 </body>

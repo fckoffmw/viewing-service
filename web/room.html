@@ -2,278 +2,345 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>w2g — Комната</title>
-  <link rel="stylesheet" href="/static/room.css">
+  <link rel="stylesheet" href="/static/app.css">
 </head>
-<body>
-  <div class="layout">
-    <div class="player">
-      <div class="top-bar">
-        <a href="/index.html" class="back-link">← На главную</a>
-        <span id="room-title" class="room-title">Загрузка...</span>
-        <span id="invite-code-display" class="invite-code"></span>
-        <a id="content-link" href="/content.html" class="content-link">К контенту →</a>
+<body class="room-body">
+
+<div class="room-video">
+  <div class="room-top-left">
+    <a href="/" title="На главную">←</a>
+  </div>
+  <div class="room-video-inner">
+    <div id="room-placeholder" class="room-placeholder">Загрузка...</div>
+    <iframe id="room-player" style="display:none" allowfullscreen></iframe>
+  </div>
+</div>
+
+<div class="room-chat">
+  <div class="room-chat-header">
+    <span id="room-status-dot" class="room-status-dot offline"></span>
+    <span id="room-online-text">отключено</span>
+    <span id="room-member-count" class="room-msg-count"></span>
+    <span id="room-source-name" class="room-source-name"></span>
+    <div class="room-chat-header-right">
+      <button class="room-chat-header-btn" id="room-menu-btn" title="Меню">⋮</button>
+      <div class="room-header-menu" id="room-header-menu">
+        <button class="room-header-menu-item" id="menu-change-source" onclick="openSourceModal()">Сменить источник</button>
+        <button class="room-header-menu-item" onclick="copyLink()">Копировать ссылку</button>
+        <button class="room-header-menu-item danger" id="menu-delete-room" onclick="deleteRoom()">Удалить комнату</button>
       </div>
-      <div id="player-container">
-        <p id="player-placeholder">Загрузка...</p>
-        <iframe id="player-frame" style="display:none" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
-      </div>
-    </div>
-    <div class="chat">
-      <div id="chat-messages"></div>
-      <form id="chat-form">
-        <input type="text" id="chat-input" placeholder="Сообщение..." maxlength="500" autocomplete="off">
-        <button type="submit">→</button>
-      </form>
     </div>
   </div>
+  <div id="room-messages" class="room-messages"></div>
+  <form id="room-chat-form" class="room-chat-form">
+    <input id="room-chat-input" class="room-chat-input" type="text" placeholder="Сообщение..." maxlength="500" autocomplete="off">
+    <button id="room-chat-send" class="room-chat-send" type="submit">→</button>
+  </form>
+</div>
 
-  <script>
-    var currentUsername = "";
-    var currentUserId = "";
-    var inviteCode = "";
-
-    async function checkAuth() {
-      try {
-        const res = await fetch("/auth/me");
-        if (!res.ok) {
-          window.location.href = "/login.html";
-          return false;
-        }
-        const user = await res.json();
-        currentUsername = user.username;
-        currentUserId = user.id;
-        return true;
-      } catch {
-        window.location.href = "/login.html";
-        return false;
-      }
-    }
-
-    // --- player ---
-    async function loadPlayer() {
-      if (!inviteCode) return;
-
-      try {
-        const res = await fetch("/api/rooms/" + inviteCode);
-        if (!res.ok) {
-          document.getElementById("player-placeholder").textContent = "Комната не найдена";
-          return;
-        }
-        const room = await res.json();
-        console.log("Room data:", room);
-        console.log("Source URL:", room.current_source?.url);
-        document.getElementById("room-title").textContent = room.name || "Комната";
-        document.getElementById("invite-code-display").textContent = inviteCode;
-        document.getElementById("content-link").href = "/content.html?invite=" + inviteCode;
-        roomOwnerId = room.owner_id;
-
-        if (room.current_source && room.current_source.url) {
-          var frame = document.getElementById("player-frame");
-          var placeholder = document.getElementById("player-placeholder");
-          if (frame && placeholder) {
-            frame.src = decodeURIComponent(room.current_source.url);
-            frame.style.display = "block";
-            placeholder.style.display = "none";
-          }
-        } else {
-          var link = inviteCode ? '/content.html?invite=' + inviteCode : '/content.html';
-          document.getElementById("player-placeholder").innerHTML = 'Источник не выбран. <a href="' + link + '">Выберите на странице контента</a>.';
-        }
-      } catch (e) {
-        console.error("Player error:", e);
-        document.getElementById("player-placeholder").textContent = "Ошибка загрузки";
-      }
-    }
-
-    // --- chat ---
-    var messagesEl = document.getElementById("chat-messages");
-    var form = document.getElementById("chat-form");
-    var input = document.getElementById("chat-input");
-    var ws;
-
-    function connect() {
-      var proto = location.protocol === "https:" ? "wss:" : "ws:";
-      var wsPath = inviteCode ? "/ws/" + inviteCode : "/ws";
-      ws = new WebSocket(proto + "//" + location.host + wsPath);
-
-      ws.onopen = function() {
-        appendMessage("system", "", "Подключено");
-      };
-
-      ws.onmessage = function(e) {
-        var data = JSON.parse(e.data);
-        console.log("msg:", data.username, "current:", currentUsername, "match:", data.username === currentUsername);
-        appendMessage(data.username === currentUsername ? "me" : "other", data.username, data.text);
-      };
-
-      ws.onclose = function() {
-        appendMessage("system", "", "Отключено");
-      };
-
-      ws.onerror = function() {
-        appendMessage("system", "", "Ошибка соединения");
-      };
-    }
-
-    function appendMessage(type, username, text) {
-      var div = document.createElement("div");
-      div.className = "msg msg-" + type;
-      var color = type === "me" ? "#a8c0ff" : getUserColor(username);
-      if (type === "me") {
-        div.innerHTML = '<span class="username" style="color:' + color + '">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
-      } else if (type === "other") {
-        div.innerHTML = '<span class="username" style="color:' + color + '">[' + esc(username) + ']</span> <span class="text">' + esc(text) + '</span>';
-      } else {
-        div.innerHTML = '<span class="text">[ ' + esc(text) + ' ]</span>';
-      }
-      messagesEl.appendChild(div);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function getUserColor(name) {
-      var colors = ["#7eb8da", "#9ed6a8", "#e8b89d", "#c4a5d4", "#f0c987", "#a8d8ea", "#b8c5d6", "#d4b8a0"];
-      var hash = 0;
-      for (var i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-      }
-      return colors[Math.abs(hash) % colors.length];
-    }
-
-    function esc(s) {
-      var d = document.createElement("div");
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    form.addEventListener("submit", function(e) {
-      e.preventDefault();
-      var text = input.value.trim();
-      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-      ws.send(JSON.stringify({ text: text }));
-      input.value = "";
-    });
-
-    // Start
-    window.addEventListener("DOMContentLoaded", function() {
-      var params = new URLSearchParams(window.location.search);
-      inviteCode = params.get("invite");
-
-      if (!inviteCode) {
-        document.getElementById("player-placeholder").textContent = "Нет кода приглашения. Создайте комнату на главной странице.";
-      }
-
-      var sourcesModal = document.getElementById("sources-modal");
-      var roomOwnerId = "";
-
-      window.openSourceModal = function() {
-        if (!roomOwnerId || roomOwnerId !== currentUserId) return;
-        sourcesModal.style.display = "flex";
-        loadSourcesForModal();
-      };
-
-      window.closeSourceModal = function() {
-        sourcesModal.style.display = "none";
-      };
-
-      checkAuth().then(function(ok) {
-        if (ok) {
-          loadPlayerInternal();
-          connect();
-        }
-      });
-    });
-
-    function loadPlayerInternal() {
-      if (!inviteCode) return;
-
-      var placeholder = document.getElementById("player-placeholder");
-      var frame = document.getElementById("player-frame");
-      var roomTitle = document.getElementById("room-title");
-      var inviteDisplay = document.getElementById("invite-code-display");
-      var contentLink = document.getElementById("content-link");
-
-      if (!placeholder || !frame) return;
-
-      fetch("/api/rooms/" + inviteCode).then(function(res) {
-        if (!res.ok) {
-          placeholder.textContent = "Комната не найдена";
-          return res.json();
-        }
-        return res.json();
-      }).then(function(room) {
-        if (!room || room.error) {
-          placeholder.textContent = "Ошибка загрузки";
-          return;
-        }
-        console.log("Room data:", room);
-        console.log("Source URL:", room.current_source?.url);
-
-        if (roomTitle) roomTitle.textContent = room.name || "Комната";
-        if (inviteDisplay) inviteDisplay.textContent = inviteCode;
-        if (contentLink) contentLink.href = "/content.html?invite=" + inviteCode;
-        roomOwnerId = room.owner_id;
-
-        if (room.current_source && room.current_source.url) {
-          frame.src = decodeURIComponent(room.current_source.url);
-          frame.style.display = "block";
-          placeholder.style.display = "none";
-        } else {
-          placeholder.innerHTML = 'Источник не выбран. <a href="/content.html?invite=' + inviteCode + '">Выберите на странице контента</a>.';
-        }
-      }).catch(function(e) {
-        console.error("Player error:", e);
-        placeholder.textContent = "Ошибка загрузки";
-      });
-    }
-
-    async function loadSourcesForModal() {
-      var list = document.getElementById("sources-list");
-      var activeId = document.querySelector(".source-card-active")?.dataset?.id;
-
-      try {
-        var res = await fetch("/api/sources");
-        var sources = await res.json();
-        if (!res.ok || sources.length === 0) {
-          list.innerHTML = "<p>Нет источников</p>";
-          return;
-        }
-        list.innerHTML = sources.map(function(s) {
-          var isActive = s.id === activeId;
-          var cls = isActive ? "source-item source-item-active" : "source-item";
-          return '<div class="' + cls + '" data-id="' + s.id + '" onclick="selectSource(\'' + s.id + '\')">' + esc(s.name) + (isActive ? " (активен)" : "") + '</div>';
-        }).join("");
-      } catch {
-        list.innerHTML = "<p>Ошибка загрузки</p>";
-      }
-    }
-
-    async function selectSource(id) {
-      try {
-        var res = await fetch("/api/rooms/" + inviteCode + "/source", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ source_id: id }),
-        });
-        if (res.ok) {
-          closeSourceModal();
-          loadPlayer();
-        } else {
-          alert("Не удалось сменить источник");
-        }
-      } catch {
-        alert("Ошибка");
-      }
-    }
-  </script>
-
-  <div id="sources-modal" class="modal" style="display:none">
-    <div class="modal-content">
-      <h2>Выберите источник</h2>
-      <div id="sources-list" class="sources-list"></div>
-      <button onclick="closeSourceModal()" class="cancel-btn" style="width:100%;margin-top:12px">Отмена</button>
+<div class="modal-overlay" id="source-modal" style="display:none" onclick="if(event.target===this)closeSourceModal()">
+  <div class="modal">
+    <h2>Источники</h2>
+    <div class="modal-source-list" id="source-list"></div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeSourceModal()">Отмена</button>
     </div>
   </div>
+</div>
+
+<script>
+var currentUsername = "";
+var currentUserId = "";
+var inviteCode = "";
+var roomOwnerId = "";
+var ws = null;
+var reconnectTimer = null;
+
+async function checkAuth() {
+  try {
+    var res = await fetch("/auth/me");
+    if (!res.ok) { window.location.href = "/login.html"; return false; }
+    var user = await res.json();
+    currentUsername = user.username;
+    currentUserId = user.id;
+    return true;
+  } catch {
+    window.location.href = "/login.html";
+    return false;
+  }
+}
+
+async function loadRoom() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (!res.ok) { setPlaceholder("Комната не найдена"); return; }
+    var room = await res.json();
+
+    document.title = "w2g — " + (room.name || "Комната");
+    roomOwnerId = room.owner_id;
+    updateMembers(room.members_online);
+
+    if (room.current_source && room.current_source.url) {
+      showVideo(room.current_source.url);
+      updateSourceName(room.current_source.name || "");
+    } else {
+      setPlaceholder('Источник не выбран. <a href="/content.html?invite=' + inviteCode + '">Выберите на странице контента</a>.');
+      updateSourceName("");
+    }
+
+    var isOwner = roomOwnerId === currentUserId;
+    document.getElementById("menu-change-source").style.display = isOwner ? "" : "none";
+    document.getElementById("menu-delete-room").style.display = isOwner ? "" : "none";
+  } catch {
+    setPlaceholder("Ошибка загрузки");
+  }
+}
+
+function setPlaceholder(html) {
+  var el = document.getElementById("room-placeholder");
+  el.innerHTML = html;
+  el.style.display = "flex";
+  document.getElementById("room-player").style.display = "none";
+}
+
+function showVideo(url) {
+  var decoded = decodeURIComponent(url);
+  document.getElementById("room-player").src = decoded;
+  document.getElementById("room-player").style.display = "block";
+  document.getElementById("room-placeholder").style.display = "none";
+}
+
+function updateSourceName(name) {
+  document.getElementById("room-source-name").textContent = name || "";
+}
+
+function updateMembers(n) {
+  var el = document.getElementById("room-member-count");
+  el.textContent = n > 0 ? "· " + n : "";
+}
+
+function setStatus(status) {
+  var dot = document.getElementById("room-status-dot");
+  var text = document.getElementById("room-online-text");
+  dot.className = "room-status-dot " + status;
+  text.textContent = status === "online" ? "онлайн" : "отключено";
+}
+
+function connectWS() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  var proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(proto + "//" + location.host + "/ws/" + inviteCode);
+
+  ws.onopen = function() {
+    setStatus("online");
+    appendMessage("system", "", "Подключились");
+    fetchMembers();
+  };
+
+  ws.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    if (data.type === "source_changed") {
+      if (data.payload && data.payload.source_url) {
+        showVideo(data.payload.source_url);
+        refreshSourceName();
+      }
+      return;
+    }
+    var type = data.username === currentUsername ? "me" : "other";
+    appendMessage(type, data.username, data.text);
+  };
+
+  ws.onclose = function() {
+    setStatus("offline");
+    appendMessage("system", "", "Отключились");
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect() {
+  reconnectTimer = setTimeout(connectWS, 5000);
+}
+
+async function fetchMembers() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (res.ok) {
+      var room = await res.json();
+      updateMembers(room.members_online);
+    }
+  } catch {}
+}
+
+async function refreshSourceName() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (res.ok) {
+      var room = await res.json();
+      var name = room.current_source ? room.current_source.name : "";
+      updateSourceName(name);
+    }
+  } catch {}
+}
+
+function appendMessage(type, username, text) {
+  var el = document.getElementById("room-messages");
+  var div = document.createElement("div");
+  if (type === "system") {
+    div.className = "room-msg system";
+    div.textContent = text;
+  } else {
+    div.className = "room-msg";
+    var color = getUserColor(username);
+    div.style.borderLeftColor = color;
+    var nameSpan = document.createElement("span");
+    nameSpan.className = "room-msg-username";
+    nameSpan.style.color = color;
+    nameSpan.textContent = username + ":";
+    var textSpan = document.createElement("span");
+    textSpan.className = "room-msg-text";
+    textSpan.textContent = text;
+    div.appendChild(nameSpan);
+    div.appendChild(textSpan);
+  }
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function getUserColor(name) {
+  var hash = 2166136261;
+  for (var i = 0; i < name.length; i++) {
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return "hsl(" + Math.abs(hash % 360) + ", 80%, 65%)";
+}
+
+// --- menu ---
+document.addEventListener("click", function(e) {
+  var menu = document.getElementById("room-header-menu");
+  var btn = document.getElementById("room-menu-btn");
+  if (menu.classList.contains("open") && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.classList.remove("open");
+  }
+});
+
+document.getElementById("room-menu-btn").addEventListener("click", function(e) {
+  e.stopPropagation();
+  document.getElementById("room-header-menu").classList.toggle("open");
+});
+
+function copyLink() {
+  var url = window.location.origin + "/room.html?invite=" + inviteCode;
+  navigator.clipboard.writeText(url).then(function() {
+    showToast("Ссылка скопирована");
+  }, function() {
+    showToast("Ошибка копирования");
+  });
+  document.getElementById("room-header-menu").classList.remove("open");
+}
+
+function deleteRoom() {
+  if (!confirm("Удалить комнату?")) return;
+  fetch("/api/rooms/" + inviteCode, { method: "DELETE" }).then(function(res) {
+    if (res.ok) {
+      window.location.href = "/";
+    } else {
+      showToast("Ошибка удаления");
+    }
+  }).catch(function() {
+    showToast("Ошибка удаления");
+  });
+  document.getElementById("room-header-menu").classList.remove("open");
+}
+
+// --- source modal ---
+function openSourceModal() {
+  document.getElementById("room-header-menu").classList.remove("open");
+  document.getElementById("source-modal").style.display = "flex";
+  loadSourceList();
+}
+
+function closeSourceModal() {
+  document.getElementById("source-modal").style.display = "none";
+}
+
+async function loadSourceList() {
+  var list = document.getElementById("source-list");
+  try {
+    var res = await fetch("/api/sources");
+    if (!res.ok) { list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Ошибка загрузки</p>"; return; }
+    var sources = await res.json();
+    if (sources.length === 0) {
+      list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Нет источников. <a href='/content.html' style='color:#888;'>Добавьте</a>.</p>";
+      return;
+    }
+    list.innerHTML = "";
+    sources.forEach(function(s) {
+      var btn = document.createElement("button");
+      btn.className = "modal-source-item";
+      btn.textContent = s.name;
+      btn.onclick = function() { selectSource(s.id); };
+      list.appendChild(btn);
+    });
+  } catch {
+    list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Ошибка загрузки</p>";
+  }
+}
+
+async function selectSource(id) {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode + "/source", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: id }),
+    });
+    if (res.ok) {
+      closeSourceModal();
+    } else {
+      showToast("Не удалось сменить источник");
+    }
+  } catch {
+    showToast("Ошибка");
+  }
+}
+
+// --- form ---
+document.getElementById("room-chat-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  var input = document.getElementById("room-chat-input");
+  var text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ text: text }));
+  input.value = "";
+});
+
+// --- toast ---
+function showToast(msg) {
+  var t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+// --- start ---
+window.addEventListener("DOMContentLoaded", async function() {
+  var ok = await checkAuth();
+  if (!ok) return;
+
+  var params = new URLSearchParams(window.location.search);
+  inviteCode = params.get("invite");
+  if (!inviteCode) {
+    setPlaceholder("Нет кода приглашения");
+    return;
+  }
+
+  await loadRoom();
+  connectWS();
+});
+</script>
+
 </body>
 </html>
