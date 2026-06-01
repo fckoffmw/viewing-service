@@ -793,6 +793,46 @@ body::before {
 }
 
 @media (max-width: 1023px) {
+  body {
+    zoom: 1;
+  }
+
+  .nav {
+    position: relative;
+    justify-content: center;
+    padding: 10px 12px;
+  }
+
+  .nav-left {
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .nav-logo {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+  }
+
+  .nav-link {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .nav-right {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    gap: 6px;
+  }
+
+  .nav-username {
+    display: none;
+  }
+
   .room-body {
     flex-direction: column;
   }
