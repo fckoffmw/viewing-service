@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
+	"time"
 )
 
 type sender interface {
@@ -11,23 +12,25 @@ type sender interface {
 }
 
 type hub struct {
-	log       *slog.Logger
-	roomID    string
-	clients   map[sender]struct{}
-	register  chan sender
+	log        *slog.Logger
+	roomID     string
+	clients    map[sender]struct{}
+	register   chan sender
 	unregister chan sender
 	broadcast  chan []byte
 	state      State
 	stopCh     chan struct{}
 	mu         sync.RWMutex
-	onEmpty   func()
+	onEmpty    func()
 }
 
 type State struct {
 	SourceID  string
 	SourceURL string
+
 	Playing   bool
 	Position  float64
+	UpdatedAt time.Time
 }
 
 type hubManager struct {
@@ -46,13 +49,13 @@ type HubManager interface {
 
 func newHub(log *slog.Logger, roomID string) *hub {
 	return &hub{
-		log:       log,
-		roomID:    roomID,
-		clients:   make(map[sender]struct{}),
-		register:  make(chan sender),
+		log:        log,
+		roomID:     roomID,
+		clients:    make(map[sender]struct{}),
+		register:   make(chan sender),
 		unregister: make(chan sender),
 		broadcast:  make(chan []byte, 256),
-		stopCh:    make(chan struct{}),
+		stopCh:     make(chan struct{}),
 	}
 }
 
@@ -150,14 +153,7 @@ func (h *hub) BroadcastSourceChanged(sourceID, sourceURL string) {
 	}
 	data, _ := json.Marshal(msg)
 
-	for client := range h.clients {
-		select {
-		case client.Send() <- data:
-		default:
-			delete(h.clients, client)
-			close(client.Send())
-		}
-	}
+	h.broadcast <- data
 }
 
 func (h *hub) MemberCount() int {
