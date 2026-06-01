@@ -21,6 +21,7 @@
 
 **Response 400:**
 ```json
+{"error": "cannot read req body"}
 {"error": "username cannot be empty"}
 {"error": "username must be at least 3 characters"}
 {"error": "password must be at least 4 characters"}
@@ -46,6 +47,11 @@
 **Response 200:**
 - `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
 - `null`
+
+**Response 400:**
+```json
+{"error": "cannot read req body"}
+```
 
 **Response 401:**
 ```json
@@ -249,6 +255,7 @@
 
 **Response 400:**
 ```json
+{"error": "invalid request body"}
 {"error": "source not found"}
 ```
 
