@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"w2g/internal/auth"
-	"w2g/internal/chat"
+	"w2g/internal/realtime"
 	"w2g/internal/config"
 	router "w2g/internal/http"
 	"w2g/internal/repo"
@@ -51,7 +51,7 @@ func main() {
 	authService := auth.NewService(csvStorage, sessionStore)
 	authHandler := auth.NewHandler(authService, log)
 
-	roomHubManager := chat.NewHubManager(log)
+	roomHubManager := realtime.NewHubManager(log)
 	roomService := room.NewService(log, roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
 	roomHandler := room.NewHandler(roomService, log)
 

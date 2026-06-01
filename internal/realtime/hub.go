@@ -1,4 +1,4 @@
-package chat
+package realtime
 
 import (
 	"encoding/json"
@@ -17,13 +17,13 @@ type hub struct {
 	register  chan sender
 	unregister chan sender
 	broadcast  chan []byte
-	state      state
+	state      State
 	stopCh     chan struct{}
 	mu         sync.RWMutex
 	onEmpty   func()
 }
 
-type state struct {
+type State struct {
 	SourceID  string
 	SourceURL string
 	Playing   bool
@@ -38,7 +38,7 @@ type hubManager struct {
 
 type HubManager interface {
 	GetOrCreate(roomID string) *hub
-	GetRoomState(roomID string) (string, string, bool, float64)
+	GetRoomState(roomID string) State
 	GetMembersOnline(roomID string) int
 	BroadcastSourceChanged(roomID, sourceID, sourceURL string)
 	Remove(roomID string)
@@ -120,11 +120,11 @@ func (h *hub) Broadcast() chan<- []byte {
 	return h.broadcast
 }
 
-func (h *hub) GetState() (string, string, bool, float64) {
+func (h *hub) GetState() State {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	return h.state.SourceID, h.state.SourceURL, h.state.Playing, h.state.Position
+	return h.state
 }
 
 func (h *hub) SetState(sourceID, sourceURL string, playing bool, position float64) {
@@ -138,8 +138,8 @@ func (h *hub) SetState(sourceID, sourceURL string, playing bool, position float6
 }
 
 func (h *hub) BroadcastSourceChanged(sourceID, sourceURL string) {
-	_, _, playing, position := h.GetState()
-	h.SetState(sourceID, sourceURL, playing, position)
+	st := h.GetState()
+	h.SetState(sourceID, sourceURL, st.Playing, st.Position)
 
 	msg := map[string]interface{}{
 		"type": "source_changed",
@@ -216,14 +216,14 @@ func (m *hubManager) Remove(roomID string) {
 	}
 }
 
-func (m *hubManager) GetRoomState(roomID string) (string, string, bool, float64) {
+func (m *hubManager) GetRoomState(roomID string) State {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	if hub, ok := m.hubs[roomID]; ok {
 		return hub.GetState()
 	}
-	return "", "", false, 0
+	return State{}
 }
 
 func (m *hubManager) GetMembersOnline(roomID string) int {

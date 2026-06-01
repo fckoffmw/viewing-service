@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"w2g/internal/auth"
-	"w2g/internal/chat"
+	"w2g/internal/realtime"
 	"w2g/internal/middleware"
 )
 
@@ -40,12 +40,12 @@ func NewRouter(
 	authHandler authHandler,
 	sourceHandler sourceHandler,
 	roomHandler roomHandler,
-	hubManager chat.HubGetter,
+	hubManager realtime.HubGetter,
 ) *router {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/ws/{invite_code}", func(w http.ResponseWriter, r *http.Request) {
-		chat.ServeWS(log, hubManager, authService, w, r)
+		realtime.ServeWS(log, hubManager, authService, w, r)
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

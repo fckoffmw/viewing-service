@@ -1,4 +1,4 @@
-package chat
+package realtime
 
 import (
 	"encoding/json"
