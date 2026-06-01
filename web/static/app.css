@@ -545,7 +545,7 @@ body::before {
   flex-direction: column;
   border-left: 1px solid #222;
   flex-shrink: 0;
-  background: rgba(0,0,0,0.8);
+  background: rgba(0,0,0,0.1);
 }
 
 .room-chat-header {

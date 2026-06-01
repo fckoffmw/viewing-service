@@ -4,11 +4,13 @@
 
 ### TODO
 
+- [ ] full rest доделать для всех видов ресурсов
 - [ ] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
 - [ ] sync
   - [ ] чтобы страница обновлялась у всех при изменении источника
   - [ ] ws взаимодействие
   - [ ] nats
+- [ ] админка
 - [ ] разделение источников помимо VK
 - [ ] кеширование
 - [ ] auth more +
