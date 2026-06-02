@@ -5,9 +5,10 @@
 ### TODO
 
 - [ ] sync
-  - [ ] структура состояния
-  - [ ] типы возможных ивентов (сверяясь с sync.md)
+  - [x] структура состояния
+  - [x] типы возможных ивентов (сверяясь с sync.md)
   - [ ] сервисный слой
+  - [ ] зачем ? extractInviteCodeFromPath(r.URL.Path) - убрать
 - [ ] deploy добавить флаг nginx/web директории для копирования туда фронта
 - [ ] full rest доделать для всех видов ресурсов
 - [ ] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.

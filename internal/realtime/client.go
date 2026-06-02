@@ -16,8 +16,8 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 1024
-	maxTextLen     = 500
+	maxMessageSize = 2048
+	maxTextLen     = 1000
 )
 
 var upgrader = websocket.Upgrader{
@@ -33,10 +33,17 @@ type chatMessage struct {
 	Text     string `json:"text"`
 }
 
+type incomingEvent struct {
+	Username string
+	UserID   string
+	Sender   sender
+	Message  IncomingMessage
+}
+
 type Client struct {
 	hub      *hub
 	conn     *websocket.Conn
-	send     chan []byte
+	send     chan OutgoingMessage
 	username string
 	userID   string
 }
@@ -87,7 +94,7 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 		conn:     conn,
 		username: user.Username,
 		userID:   user.ID,
-		send:     make(chan []byte, 256),
+		send:     make(chan OutgoingMessage, 256),
 	}
 
 	roomHub.Register() <- client
@@ -96,7 +103,7 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 	go client.readPump(log, roomHub)
 }
 
-func (c *Client) Send() chan []byte {
+func (c *Client) Send() chan OutgoingMessage {
 	return c.send
 }
 
@@ -125,30 +132,20 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 			break
 		}
 
-		var msg chatMessage
+		var msg IncomingMessage
 		if err := json.NewDecoder(reader).Decode(&msg); err != nil {
 			log.Debug("ws: decode error", "err", err)
 			continue
 		}
 
-		msg.Username = c.username
-		msg.Text = strings.TrimSpace(msg.Text)
-
-		if msg.Text == "" {
-			continue
+		evt := incomingEvent{
+			Username: c.username,
+			UserID:   c.userID,
+			Sender:   c,
+			Message:  msg,
 		}
 
-		if len(msg.Text) > maxTextLen {
-			msg.Text = msg.Text[:maxTextLen]
-		}
-
-		data, err := json.Marshal(msg)
-		if err != nil {
-			log.Error("ws: marshal error", "err", err)
-			continue
-		}
-
-		roomHub.Broadcast() <- data
+		roomHub.Incoming() <- evt
 	}
 }
 
@@ -176,7 +173,14 @@ func (c *Client) writePump(log *slog.Logger) {
 				log.Debug("ws: write error", "err", err)
 				return
 			}
-			w.Write(msg)
+
+			data, err := json.Marshal(msg)
+			if err != nil {
+				log.Error("ws: marshal error", "err", err)
+
+				return
+			}
+			w.Write(data)
 
 			if err := w.Close(); err != nil {
 				log.Debug("ws: write close error", "err", err)
