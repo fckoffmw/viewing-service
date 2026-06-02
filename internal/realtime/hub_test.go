@@ -9,10 +9,10 @@ import (
 )
 
 type mockSender struct {
-	ch chan OutgoingMessage
+	ch chan outgoingMessage
 }
 
-func (m *mockSender) Send() chan OutgoingMessage {
+func (m *mockSender) Send() chan outgoingMessage {
 	return m.ch
 }
 
@@ -29,7 +29,7 @@ func newTestHub(t *testing.T, numClients int) *testHarness {
 
 	clients := make([]*mockSender, numClients)
 	for i := 0; i < numClients; i++ {
-		c := &mockSender{ch: make(chan OutgoingMessage, 64)}
+		c := &mockSender{ch: make(chan outgoingMessage, 64)}
 		h.Register() <- c
 		// drain sync message
 		<-c.ch
@@ -43,7 +43,7 @@ func (th *testHarness) close() {
 	th.hub.Close()
 }
 
-func (th *testHarness) recv(idx int) OutgoingMessage {
+func (th *testHarness) recv(idx int) outgoingMessage {
 	select {
 	case msg := <-th.clients[idx].ch:
 		return msg
@@ -52,8 +52,8 @@ func (th *testHarness) recv(idx int) OutgoingMessage {
 	}
 }
 
-func (th *testHarness) recvAll() []OutgoingMessage {
-	var msgs []OutgoingMessage
+func (th *testHarness) recvAll() []outgoingMessage {
+	var msgs []outgoingMessage
 	for i := range th.clients {
 		msgs = append(msgs, th.recv(i))
 	}
@@ -74,17 +74,17 @@ func TestHubRegister_SendsSync(t *testing.T) {
 	go h.Run()
 	defer h.Close()
 
-	client := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	client := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- client
 
 	msg := <-client.ch
-	if msg.Type != "sync" {
+	if msg.Type != MsgTypeSync {
 		t.Errorf("expected sync, got %s", msg.Type)
 	}
 
-	payload, ok := msg.Payload.(SyncPayload)
+	payload, ok := msg.Payload.(syncPayload)
 	if !ok {
-		t.Fatalf("expected SyncPayload, got %T", msg.Payload)
+		t.Fatalf("expected syncPayload, got %T", msg.Payload)
 	}
 	if payload.Playing {
 		t.Error("expected Playing=false")
@@ -101,11 +101,11 @@ func TestHubRegister_SyncIncludesCurrentState(t *testing.T) {
 	go h.Run()
 	defer h.Close()
 
-	client := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	client := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- client
 
 	msg := <-client.ch
-	payload := msg.Payload.(SyncPayload)
+	payload := msg.Payload.(syncPayload)
 
 	if payload.SourceID != "s1" {
 		t.Errorf("expected SourceID=s1, got %s", payload.SourceID)
@@ -129,7 +129,7 @@ func TestHubUnregister_ShutsDownOnEmpty(t *testing.T) {
 		close(done)
 	}()
 
-	client := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	client := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- client
 	<-client.ch // drain sync
 
@@ -147,8 +147,8 @@ func TestHubUnregister_RemainingClientsKeepHubAlive(t *testing.T) {
 	go h.Run()
 	defer h.Close()
 
-	c1 := &mockSender{ch: make(chan OutgoingMessage, 10)}
-	c2 := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	c1 := &mockSender{ch: make(chan outgoingMessage, 10)}
+	c2 := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- c1
 	<-c1.ch
 	h.Register() <- c2
@@ -160,11 +160,11 @@ func TestHubUnregister_RemainingClientsKeepHubAlive(t *testing.T) {
 	payload, _ := json.Marshal(map[string]string{"text": "hi"})
 	h.Incoming() <- incomingEvent{
 		Username: "alice",
-		Message:  IncomingMessage{Type: "chat", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypeChat, Payload: payload},
 	}
 
 	msg := <-c2.ch
-	if msg.Type != "chat" {
+	if msg.Type != MsgTypeChat {
 		t.Errorf("expected chat, got %s", msg.Type)
 	}
 }
@@ -173,8 +173,8 @@ func TestHubStop_ClosesAllClients(t *testing.T) {
 	h := newHub(slog.Default(), "room1")
 	go h.Run()
 
-	c1 := &mockSender{ch: make(chan OutgoingMessage, 10)}
-	c2 := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	c1 := &mockSender{ch: make(chan outgoingMessage, 10)}
+	c2 := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- c1
 	<-c1.ch
 	h.Register() <- c2
@@ -198,9 +198,8 @@ func TestHandleEvent_Chat_BroadcastsToAllExceptSender(t *testing.T) {
 	payload, _ := json.Marshal(map[string]string{"text": "hello"})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
-		UserID:   "u1",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "chat", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypeChat, Payload: payload},
 	}
 
 	// sender (client 0) should NOT get the message
@@ -211,7 +210,7 @@ func TestHandleEvent_Chat_BroadcastsToAllExceptSender(t *testing.T) {
 	// all others should get it
 	for i := 1; i < 3; i++ {
 		msg := th.recv(i)
-		if msg.Type != "chat" {
+		if msg.Type != MsgTypeChat {
 			t.Errorf("client %d: expected chat, got %s", i, msg.Type)
 		}
 		if msg.Username != "alice" {
@@ -227,7 +226,7 @@ func TestHandleEvent_Chat_EmptyTextIgnored(t *testing.T) {
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "chat", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypeChat, Payload: payload},
 	}
 
 	if !th.recvNone(1) {
@@ -243,11 +242,11 @@ func TestHandleEvent_Chat_TrimsAndTruncates(t *testing.T) {
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "chat", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypeChat, Payload: payload},
 	}
 
 	msg := th.recv(1)
-	p := msg.Payload.(ChatPayload)
+	p := msg.Payload.(chatPayload)
 	if len(p.Text) > maxTextLen {
 		t.Errorf("expected truncated text <= %d, got %d", maxTextLen, len(p.Text))
 	}
@@ -263,7 +262,7 @@ func TestHandleEvent_Chat_InvalidPayloadIgnored(t *testing.T) {
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "chat", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypeChat, Payload: payload},
 	}
 
 	if !th.recvNone(1) {
@@ -274,17 +273,17 @@ func TestHandleEvent_Chat_InvalidPayloadIgnored(t *testing.T) {
 func TestHandleEvent_Play_UpdatesStateAndBroadcasts(t *testing.T) {
 	th := newTestHub(t, 2)
 
-	payload, _ := json.Marshal(PlayerPayload{Position: 42.5})
+	payload, _ := json.Marshal(playerPayload{Position: 42.5})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "play", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypePlay, Payload: payload},
 	}
 
 	// broadcast to all (including sender)
 	for i := 0; i < 2; i++ {
 		msg := th.recv(i)
-		if msg.Type != "play" {
+		if msg.Type != MsgTypePlay {
 			t.Errorf("client %d: expected play, got %s", i, msg.Type)
 		}
 		if msg.Username != "alice" {
@@ -292,7 +291,7 @@ func TestHandleEvent_Play_UpdatesStateAndBroadcasts(t *testing.T) {
 		}
 	}
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if !st.Playing {
 		t.Error("expected Playing=true")
 	}
@@ -308,24 +307,24 @@ func TestHandleEvent_Pause_UpdatesStateAndBroadcasts(t *testing.T) {
 	th := newTestHub(t, 2)
 
 	// first play
-	p1, _ := json.Marshal(PlayerPayload{Position: 100})
+	p1, _ := json.Marshal(playerPayload{Position: 100})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "play", Payload: p1},
+		Message:  incomingMessage{Type: MsgTypePlay, Payload: p1},
 	}
 	th.recvAll()
 
 	// then pause
-	p2, _ := json.Marshal(PlayerPayload{Position: 120})
+	p2, _ := json.Marshal(playerPayload{Position: 120})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "bob",
 		Sender:   th.clients[1],
-		Message:  IncomingMessage{Type: "pause", Payload: p2},
+		Message:  incomingMessage{Type: MsgTypePause, Payload: p2},
 	}
 	th.recvAll()
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if st.Playing {
 		t.Error("expected Playing=false after pause")
 	}
@@ -341,14 +340,14 @@ func TestHandleEvent_Play_InvalidPayloadIgnored(t *testing.T) {
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "play", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypePlay, Payload: payload},
 	}
 
 	if !th.recvNone(0) {
 		t.Error("invalid play payload should not broadcast")
 	}
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if st.Playing {
 		t.Error("state should not change on invalid payload")
 	}
@@ -358,24 +357,24 @@ func TestHandleEvent_Seek_UpdatesPositionAndBroadcasts(t *testing.T) {
 	th := newTestHub(t, 2)
 
 	// first play
-	p1, _ := json.Marshal(PlayerPayload{Position: 50})
+	p1, _ := json.Marshal(playerPayload{Position: 50})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   th.clients[0],
-		Message:  IncomingMessage{Type: "play", Payload: p1},
+		Message:  incomingMessage{Type: MsgTypePlay, Payload: p1},
 	}
 	th.recvAll()
 
 	// seek
-	p2, _ := json.Marshal(PlayerPayload{Position: 200})
+	p2, _ := json.Marshal(playerPayload{Position: 200})
 	th.hub.Incoming() <- incomingEvent{
 		Username: "bob",
 		Sender:   th.clients[1],
-		Message:  IncomingMessage{Type: "seek", Payload: p2},
+		Message:  incomingMessage{Type: MsgTypeSeek, Payload: p2},
 	}
 	th.recvAll()
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if !st.Playing {
 		t.Error("seek should not change playing state")
 	}
@@ -391,12 +390,12 @@ func TestHandleEvent_SourceChanged_UpdatesStateAndBroadcasts(t *testing.T) {
 
 	for i := 0; i < 2; i++ {
 		msg := th.recv(i)
-		if msg.Type != "source_changed" {
+		if msg.Type != MsgTypeSourceChanged {
 			t.Errorf("client %d: expected source_changed, got %s", i, msg.Type)
 		}
 	}
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if st.SourceID != "s1" {
 		t.Errorf("expected SourceID=s1, got %s", st.SourceID)
 	}
@@ -414,7 +413,7 @@ func TestHandleEvent_SourceChanged_OverwritesPrevious(t *testing.T) {
 	th.hub.BroadcastSourceChanged("s2", "https://two.com")
 	th.recv(0)
 
-	st := th.hub.GetState()
+	st := th.hub.getState()
 	if st.SourceID != "s2" {
 		t.Errorf("expected SourceID=s2, got %s", st.SourceID)
 	}
@@ -426,7 +425,7 @@ func TestHandleEvent_SourceChanged_NilSender(t *testing.T) {
 	th.hub.BroadcastSourceChanged("s1", "https://example.com")
 
 	msg := th.recv(0)
-	if msg.Type != "source_changed" {
+	if msg.Type != MsgTypeSourceChanged {
 		t.Errorf("expected source_changed, got %s", msg.Type)
 	}
 }
@@ -434,7 +433,7 @@ func TestHandleEvent_SourceChanged_NilSender(t *testing.T) {
 func TestBroadcastAll_SendsToAllClients(t *testing.T) {
 	th := newTestHub(t, 3)
 
-	msg := OutgoingMessage{Type: "test", Payload: "data"}
+	msg := outgoingMessage{Type: "test", Payload: "data"}
 	th.hub.broadcastAll(msg)
 
 	for i := 0; i < 3; i++ {
@@ -446,7 +445,7 @@ func TestBroadcastAll_SendsToAllClients(t *testing.T) {
 }
 
 func TestBroadcastAll_RemovesSlowClient(t *testing.T) {
-	smallBuf := make(chan OutgoingMessage, 1)
+	smallBuf := make(chan outgoingMessage, 1)
 	th := &testHarness{
 		hub: newHub(slog.Default(), "room1"),
 		clients: []*mockSender{
@@ -460,10 +459,10 @@ func TestBroadcastAll_RemovesSlowClient(t *testing.T) {
 	<-th.clients[0].ch // drain sync
 
 	// fill the buffer
-	th.clients[0].ch <- OutgoingMessage{Type: "fill"}
+	th.clients[0].ch <- outgoingMessage{Type: "fill"}
 
 	// this broadcast should hit default case and remove the client
-	th.hub.broadcastAll(OutgoingMessage{Type: "overflow"})
+	th.hub.broadcastAll(outgoingMessage{Type: "overflow"})
 
 	// drain the buffered "fill" message first
 	<-th.clients[0].ch
@@ -474,7 +473,7 @@ func TestBroadcastAll_RemovesSlowClient(t *testing.T) {
 }
 
 func TestHubManager_GetOrCreate_CreatesAndReuses(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	h1 := m.GetOrCreate("room1")
 	h2 := m.GetOrCreate("room1")
@@ -492,7 +491,7 @@ func TestHubManager_GetOrCreate_CreatesAndReuses(t *testing.T) {
 }
 
 func TestHubManager_Remove_StopsHub(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	h := m.GetOrCreate("room1")
 	m.Remove("room1")
@@ -511,19 +510,19 @@ func TestHubManager_Remove_StopsHub(t *testing.T) {
 }
 
 func TestHubManager_GetRoomState_ReturnsCurrentState(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	h := m.GetOrCreate("room1")
 
-	client := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	client := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- client
 	<-client.ch
 
-	payload, _ := json.Marshal(PlayerPayload{Position: 99.9})
+	payload, _ := json.Marshal(playerPayload{Position: 99.9})
 	h.Incoming() <- incomingEvent{
 		Username: "alice",
 		Sender:   client,
-		Message:  IncomingMessage{Type: "play", Payload: payload},
+		Message:  incomingMessage{Type: MsgTypePlay, Payload: payload},
 	}
 	<-client.ch // drain play broadcast
 
@@ -539,7 +538,7 @@ func TestHubManager_GetRoomState_ReturnsCurrentState(t *testing.T) {
 }
 
 func TestHubManager_GetRoomState_NonExistentReturnsEmpty(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	st := m.GetRoomState("nonexistent")
 	if st.SourceID != "" || st.Playing {
@@ -548,12 +547,12 @@ func TestHubManager_GetRoomState_NonExistentReturnsEmpty(t *testing.T) {
 }
 
 func TestHubManager_GetMembersOnline_ReturnsCount(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	h := m.GetOrCreate("room1")
 
-	c1 := &mockSender{ch: make(chan OutgoingMessage, 10)}
-	c2 := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	c1 := &mockSender{ch: make(chan outgoingMessage, 10)}
+	c2 := &mockSender{ch: make(chan outgoingMessage, 10)}
 
 	h.Register() <- c1
 	<-c1.ch
@@ -577,17 +576,17 @@ func TestHubManager_GetMembersOnline_ReturnsCount(t *testing.T) {
 }
 
 func TestHubManager_BroadcastSourceChanged_Propagates(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	h := m.GetOrCreate("room1")
-	client := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	client := &mockSender{ch: make(chan outgoingMessage, 10)}
 	h.Register() <- client
 	<-client.ch
 
 	m.BroadcastSourceChanged("room1", "s1", "https://example.com")
 
 	msg := <-client.ch
-	if msg.Type != "source_changed" {
+	if msg.Type != MsgTypeSourceChanged {
 		t.Errorf("expected source_changed, got %s", msg.Type)
 	}
 
@@ -595,7 +594,7 @@ func TestHubManager_BroadcastSourceChanged_Propagates(t *testing.T) {
 }
 
 func TestHubManager_BroadcastSourceChanged_NonExistentNoOp(t *testing.T) {
-	m := NewHubManager(slog.Default()).(*hubManager)
+	m := NewHubManager(slog.Default())
 
 	m.BroadcastSourceChanged("nonexistent", "s1", "https://example.com")
 }
@@ -605,9 +604,9 @@ func TestGetSetState(t *testing.T) {
 
 	h.SetState("s1", "https://example.com", true, 42.5)
 
-	st := h.GetState()
+	st := h.getState()
 	if st.SourceID != "s1" || st.SourceURL != "https://example.com" || !st.Playing || st.Position != 42.5 {
-		t.Error("GetState/SetState round trip failed")
+		t.Error("getState/SetState round trip failed")
 	}
 }
 
@@ -616,8 +615,8 @@ func TestMemberCount(t *testing.T) {
 	go h.Run()
 	defer h.Close()
 
-	c1 := &mockSender{ch: make(chan OutgoingMessage, 10)}
-	c2 := &mockSender{ch: make(chan OutgoingMessage, 10)}
+	c1 := &mockSender{ch: make(chan outgoingMessage, 10)}
+	c2 := &mockSender{ch: make(chan outgoingMessage, 10)}
 
 	if n := h.MemberCount(); n != 0 {
 		t.Errorf("expected 0 members, got %d", n)
@@ -648,5 +647,28 @@ func TestIncomingAccessor(t *testing.T) {
 	ch := h.Incoming()
 	if ch == nil {
 		t.Error("Incoming() returned nil")
+	}
+}
+
+func TestBroadcastSourceChanged_DropsWhenChannelFull(t *testing.T) {
+	h := newHub(slog.Default(), "test-room")
+
+	for i := 0; i < incomingBufSize; i++ {
+		h.Incoming() <- incomingEvent{}
+	}
+
+	h.BroadcastSourceChanged("s1", "https://example.com")
+
+	st := h.getState()
+	if st.SourceID != "" {
+		t.Error("expected state unchanged when incoming channel full")
+	}
+}
+
+func TestGetMembersOnline_NonExistentRoom(t *testing.T) {
+	m := NewHubManager(slog.Default())
+
+	if got := m.GetMembersOnline("nonexistent"); got != 0 {
+		t.Errorf("expected 0 for non-existent room, got %d", got)
 	}
 }

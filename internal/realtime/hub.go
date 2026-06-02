@@ -8,8 +8,22 @@ import (
 	"time"
 )
 
+const (
+	MsgTypeSync          = "sync"
+	MsgTypeChat          = "chat"
+	MsgTypePlay          = "play"
+	MsgTypePause         = "pause"
+	MsgTypeSeek          = "seek"
+	MsgTypeSourceChanged = "source_changed"
+
+	keySourceID  = "source_id"
+	keySourceURL = "source_url"
+
+	incomingBufSize = 256
+)
+
 type sender interface {
-	Send() chan OutgoingMessage
+	Send() chan outgoingMessage
 }
 
 type hub struct {
@@ -19,13 +33,13 @@ type hub struct {
 	register   chan sender
 	unregister chan sender
 	incoming   chan incomingEvent
-	state      State
+	state      state
 	stopCh     chan struct{}
 	mu         sync.RWMutex
 	onEmpty    func()
 }
 
-type State struct {
+type state struct {
 	SourceID  string
 	SourceURL string
 
@@ -34,46 +48,22 @@ type State struct {
 	UpdatedAt time.Time
 }
 
-type IncomingMessage struct {
+type incomingMessage struct {
 	Type    string          `json:"type"`
 	Payload json.RawMessage `json:"payload"`
 }
 
-type OutgoingMessage struct {
+type outgoingMessage struct {
 	Type      string      `json:"type"`
 	Username  string      `json:"username,omitempty"`
 	Timestamp time.Time   `json:"timestamp,omitempty"`
 	Payload   interface{} `json:"payload,omitempty"`
 }
 
-type ChatPayload struct {
-	Text string `json:"text"`
-}
-
-type PlayerPayload struct {
-	Position float64 `json:"position"`
-}
-
-type SyncPayload struct {
-	SourceID  string    `json:"source_id"`
-	SourceURL string    `json:"source_url"`
-	Playing   bool      `json:"playing"`
-	Position  float64   `json:"position"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
 type hubManager struct {
 	log  *slog.Logger
 	hubs map[string]*hub
 	mu   sync.RWMutex
-}
-
-type HubManager interface {
-	GetOrCreate(roomID string) *hub
-	GetRoomState(roomID string) State
-	GetMembersOnline(roomID string) int
-	BroadcastSourceChanged(roomID, sourceID, sourceURL string)
-	Remove(roomID string)
 }
 
 func newHub(log *slog.Logger, roomID string) *hub {
@@ -83,12 +73,12 @@ func newHub(log *slog.Logger, roomID string) *hub {
 		clients:    make(map[sender]struct{}),
 		register:   make(chan sender),
 		unregister: make(chan sender),
-		incoming:   make(chan incomingEvent, 256),
+		incoming:   make(chan incomingEvent, incomingBufSize),
 		stopCh:     make(chan struct{}),
 	}
 }
 
-func NewHubManager(log *slog.Logger) HubManager {
+func NewHubManager(log *slog.Logger) *hubManager {
 	return &hubManager{
 		log:  log,
 		hubs: make(map[string]*hub),
@@ -107,15 +97,9 @@ func (h *hub) Run() {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.clients[client] = struct{}{}
-			syncPayload := OutgoingMessage{
-				Type: "sync",
-				Payload: SyncPayload{
-					SourceID:  h.state.SourceID,
-					SourceURL: h.state.SourceURL,
-					Playing:   h.state.Playing,
-					Position:  h.state.Position,
-					UpdatedAt: h.state.UpdatedAt,
-				},
+			syncPayload := outgoingMessage{
+				Type:    MsgTypeSync,
+				Payload: newSyncPayload(h.state),
 			}
 			count := len(h.clients)
 			h.mu.Unlock()
@@ -144,8 +128,8 @@ func (h *hub) Run() {
 
 func (h *hub) handleEvent(evt incomingEvent) {
 	switch evt.Message.Type {
-	case "chat":
-		var payload ChatPayload
+	case MsgTypeChat:
+		var payload chatPayload
 		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
 			h.log.Debug("chat: invalid payload", "err", err)
 
@@ -154,14 +138,15 @@ func (h *hub) handleEvent(evt incomingEvent) {
 
 		payload.Text = strings.TrimSpace(payload.Text)
 		if payload.Text == "" {
+
 			return
 		}
 		if len(payload.Text) > maxTextLen {
 			payload.Text = payload.Text[:maxTextLen]
 		}
 
-		outgoing := OutgoingMessage{
-			Type:     "chat",
+		outgoing := outgoingMessage{
+			Type:     MsgTypeChat,
 			Username: evt.Username,
 			Payload:  payload,
 		}
@@ -186,8 +171,8 @@ func (h *hub) handleEvent(evt incomingEvent) {
 			h.shutdownOnEmpty()
 		}
 
-	case "play":
-		var payload PlayerPayload
+	case MsgTypePlay:
+		var payload playerPayload
 		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
 			h.log.Debug("play: invalid payload", "err", err)
 
@@ -195,20 +180,17 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		}
 
 		h.mu.Lock()
-		h.state.Playing = true
-		h.state.Position = payload.Position
-		h.state.UpdatedAt = time.Now()
-		outgoing := OutgoingMessage{
-			Type:     "play",
-			Username: evt.Username,
-			Payload:  payload,
-		}
+		h.applyPlayerEvent(true, payload.Position)
 		h.mu.Unlock()
 
-		h.broadcastAll(outgoing)
+		h.broadcastAll(outgoingMessage{
+			Type:     MsgTypePlay,
+			Username: evt.Username,
+			Payload:  payload,
+		})
 
-	case "pause":
-		var payload PlayerPayload
+	case MsgTypePause:
+		var payload playerPayload
 		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
 			h.log.Debug("pause: invalid payload", "err", err)
 
@@ -216,20 +198,17 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		}
 
 		h.mu.Lock()
-		h.state.Playing = false
-		h.state.Position = payload.Position
-		h.state.UpdatedAt = time.Now()
-		outgoing := OutgoingMessage{
-			Type:     "pause",
-			Username: evt.Username,
-			Payload:  payload,
-		}
+		h.applyPlayerEvent(false, payload.Position)
 		h.mu.Unlock()
 
-		h.broadcastAll(outgoing)
+		h.broadcastAll(outgoingMessage{
+			Type:     MsgTypePause,
+			Username: evt.Username,
+			Payload:  payload,
+		})
 
-	case "seek":
-		var payload PlayerPayload
+	case MsgTypeSeek:
+		var payload playerPayload
 		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
 			h.log.Debug("seek: invalid payload", "err", err)
 
@@ -239,20 +218,16 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.mu.Lock()
 		h.state.Position = payload.Position
 		h.state.UpdatedAt = time.Now()
-		outgoing := OutgoingMessage{
-			Type:     "seek",
-			Username: evt.Username,
-			Payload:  payload,
-		}
 		h.mu.Unlock()
 
-		h.broadcastAll(outgoing)
+		h.broadcastAll(outgoingMessage{
+			Type:     MsgTypeSeek,
+			Username: evt.Username,
+			Payload:  payload,
+		})
 
-	case "source_changed":
-		var payload struct {
-			SourceID  string `json:"source_id"`
-			SourceURL string `json:"source_url"`
-		}
+	case MsgTypeSourceChanged:
+		var payload sourceChangedPayload
 		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
 			h.log.Debug("source_changed: invalid payload", "err", err)
 
@@ -260,20 +235,29 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		}
 
 		h.mu.Lock()
-		h.state.SourceID = payload.SourceID
-		h.state.SourceURL = payload.SourceURL
-		h.state.UpdatedAt = time.Now()
-		outgoing := OutgoingMessage{
-			Type:    "source_changed",
-			Payload: payload,
-		}
+		h.applySourceEvent(payload.SourceID, payload.SourceURL)
 		h.mu.Unlock()
 
-		h.broadcastAll(outgoing)
+		h.broadcastAll(outgoingMessage{
+			Type:    MsgTypeSourceChanged,
+			Payload: payload,
+		})
 	}
 }
 
-func (h *hub) broadcastAll(msg OutgoingMessage) {
+func (h *hub) applyPlayerEvent(playing bool, position float64) {
+	h.state.Playing = playing
+	h.state.Position = position
+	h.state.UpdatedAt = time.Now()
+}
+
+func (h *hub) applySourceEvent(sourceID, sourceURL string) {
+	h.state.SourceID = sourceID
+	h.state.SourceURL = sourceURL
+	h.state.UpdatedAt = time.Now()
+}
+
+func (h *hub) broadcastAll(msg outgoingMessage) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -303,7 +287,7 @@ func (h *hub) Incoming() chan<- incomingEvent {
 	return h.incoming
 }
 
-func (h *hub) GetState() State {
+func (h *hub) getState() state {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -322,15 +306,21 @@ func (h *hub) SetState(sourceID, sourceURL string, playing bool, position float6
 
 func (h *hub) BroadcastSourceChanged(sourceID, sourceURL string) {
 	payload, _ := json.Marshal(map[string]string{
-		"source_id":  sourceID,
-		"source_url": sourceURL,
+		keySourceID:  sourceID,
+		keySourceURL: sourceURL,
 	})
 
-	h.incoming <- incomingEvent{
-		Message: IncomingMessage{
-			Type:    "source_changed",
+	evt := incomingEvent{
+		Message: incomingMessage{
+			Type:    MsgTypeSourceChanged,
 			Payload: payload,
 		},
+	}
+
+	select {
+	case h.incoming <- evt:
+	default:
+		h.log.Warn("broadcast source changed: incoming channel full, dropping event", "room_id", h.roomID)
 	}
 }
 
@@ -393,14 +383,14 @@ func (m *hubManager) Remove(roomID string) {
 	}
 }
 
-func (m *hubManager) GetRoomState(roomID string) State {
+func (m *hubManager) GetRoomState(roomID string) state {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	if hub, ok := m.hubs[roomID]; ok {
-		return hub.GetState()
+		return hub.getState()
 	}
-	return State{}
+	return state{}
 }
 
 func (m *hubManager) GetMembersOnline(roomID string) int {

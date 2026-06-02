@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"w2g/internal/auth"
@@ -18,6 +17,10 @@ const (
 	pingPeriod     = (pongWait * 9) / 10
 	maxMessageSize = 2048
 	maxTextLen     = 1000
+	clientBufSize  = 256
+
+	sessionIDCookie = "session_id"
+	inviteCodeParam = "invite_code"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,27 +31,21 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type chatMessage struct {
-	Username string `json:"username"`
-	Text     string `json:"text"`
-}
-
 type incomingEvent struct {
 	Username string
-	UserID   string
 	Sender   sender
-	Message  IncomingMessage
+	Message  incomingMessage
 }
 
-type Client struct {
+type client struct {
 	hub      *hub
 	conn     *websocket.Conn
-	send     chan OutgoingMessage
+	send     chan outgoingMessage
 	username string
 	userID   string
 }
 
-type AuthService interface {
+type authService interface {
 	GetUserBySession(sessionID string) (*auth.User, error)
 }
 
@@ -56,8 +53,8 @@ type HubGetter interface {
 	GetOrCreate(roomID string) *hub
 }
 
-func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
+func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc authService, w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(sessionIDCookie)
 	if err != nil {
 		log.Debug("ws: no session cookie")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -71,30 +68,35 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 		return
 	}
 
-	inviteCode := r.PathValue("invite_code")
+	inviteCode := r.PathValue(inviteCodeParam)
 	if inviteCode == "" {
-		inviteCode = extractInviteCodeFromPath(r.URL.Path)
+		log.Debug("ws: missing invite_code in path")
+		http.Error(w, "missing invite code", http.StatusBadRequest)
+
+		return
 	}
 
 	roomHub := hubManager.GetOrCreate(inviteCode)
 	if roomHub == nil {
 		log.Error("ws: failed to get or create hub")
 		http.Error(w, "internal error", http.StatusInternalServerError)
+
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Debug("ws: upgrade failed", "err", err)
+
 		return
 	}
 
-	client := &Client{
+	client := &client{
 		hub:      roomHub,
 		conn:     conn,
 		username: user.Username,
 		userID:   user.ID,
-		send:     make(chan OutgoingMessage, 256),
+		send:     make(chan outgoingMessage, clientBufSize),
 	}
 
 	roomHub.Register() <- client
@@ -103,11 +105,11 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 	go client.readPump(log, roomHub)
 }
 
-func (c *Client) Send() chan OutgoingMessage {
+func (c *client) Send() chan outgoingMessage {
 	return c.send
 }
 
-func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
+func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error("ws: readPump panic", "recover", r, "user_id", c.userID)
@@ -132,7 +134,7 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 			break
 		}
 
-		var msg IncomingMessage
+		var msg incomingMessage
 		if err := json.NewDecoder(reader).Decode(&msg); err != nil {
 			log.Debug("ws: decode error", "err", err)
 			continue
@@ -140,7 +142,6 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 
 		evt := incomingEvent{
 			Username: c.username,
-			UserID:   c.userID,
 			Sender:   c,
 			Message:  msg,
 		}
@@ -149,7 +150,7 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 	}
 }
 
-func (c *Client) writePump(log *slog.Logger) {
+func (c *client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		if r := recover(); r != nil {
@@ -184,6 +185,7 @@ func (c *Client) writePump(log *slog.Logger) {
 
 			if err := w.Close(); err != nil {
 				log.Debug("ws: write close error", "err", err)
+
 				return
 			}
 		case <-ticker.C:
@@ -193,12 +195,4 @@ func (c *Client) writePump(log *slog.Logger) {
 			}
 		}
 	}
-}
-
-func extractInviteCodeFromPath(path string) string {
-	if idx := strings.LastIndex(path, "/"); idx >= 0 && idx+1 < len(path) {
-		return path[idx+1:]
-	}
-
-	return ""
 }
