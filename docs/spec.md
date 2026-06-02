@@ -65,4 +65,4 @@
 
 ## Аутентификация
 
-См. [auth.md](auth.md)
+См. [auth.md](features/auth.md)

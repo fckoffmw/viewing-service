@@ -4,78 +4,81 @@
 
 ```
 cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ middleware.Auth ──→ Routes
-                                                                              │
-                                                                              ├── WebSocket (/ws)
-                                                                              ├── Auth API (/auth/*) - public
-                                                                              ├── Health (/healthz) - public
-                                                                              └── API (/api/*) - protected
+                                                                               │
+                                                                               ├── WebSocket (/ws/*)
+                                                                               ├── Auth API (/auth/*)
+                                                                               ├── Health (/healthz)
+                                                                               └── API (/api/*)
 ```
 
-Статика (HTML, CSS, JS) раздается через nginx.
+Статика (HTML, CSS, JS) раздаётся через nginx.
 
 ## Пакеты
 
 | Пакет | Назначение |
-|-----|-----------|
-| `auth` | Аутентификация (Register, Login, Logout) |
-| `chat` | WebSocket: Hub + Client |
+|-------|-----------|
+| `auth` | Аутентификация (Register, Login, Logout, Me) |
+| `realtime` | WebSocket: HubManager, RoomHub, Client |
+| `room` | Управление комнатами (CRUD + source) |
+| `source` | Управление источниками видео (CRUD) |
 | `middleware` | HTTP middleware (logging, auth) |
-| `repo` | CSV хранилище |
-| `room` | Управление комнатами |
-| `source` | Управление источниками |
-| `response` | Утилиты для HTTP ответов |
-| `apperrors` | Кастомные ошибки |
-| `config` | Конфигурация |
+| `repo` | CSV хранилище (общая реализация) |
+| `http/response` | Утилиты для JSON-ответов |
+| `apperrors` | Типизированные ошибки |
+| `config` | Конфигурация из .env |
 
 ## Middleware
 
 ### logging
-Логирование запросов:
 - Генерирует `request_id` (8 символов UUID)
 - Добавляет заголовок `X-Request-ID` в ответ
 - Логирует: method, path, status, duration
 
 ### auth
-Аутентификация:
-- Пропускает публичные маршруты: `/auth/*`, `/healthz`, `/ws/*`
+- Пропускает публичные пути: `/auth/*`, `/healthz`, `/ws/*`, `/static/*`, `/`
 - Для защищённых маршрутов проверяет `session_id` cookie
 - Sliding expiry: обновляет `ExpiresAt` при каждом запросе
+- Устанавливает `user_id` в контекст запроса
 
-## WebSocket чат
+## WebSocket
 
 ```
-Client ──→ readPump ──→ hub.broadcast ──→ writePump ──→ Client
+Client ──→ readPump ──→ hub.Incoming() ──→ handleEvent() ──→ broadcastAll() ──→ writePump ──→ Client
 ```
 
-- HubManager — управляет RoomHub-ами по invite_code
-- RoomHub — одна goroutine с channel dispatch
+- HubManager — реестр RoomHub по invite_code
+- RoomHub — одна goroutine с select на register/unregister/incoming
 - Keepalive: ping/pong каждые 54с
 
 ## Хранение
 
-CSV файлы в `./storage/`:
-- `users.csv` — пользователи
-- `sources.csv` — источники видео
-- `rooms.csv` — комнаты
+CSV файлы в `STORAGE_DIR`:
 
-Thread-safe через `sync.RWMutex`.
+| Файл | Назначение | Мьютекс |
+|------|-----------|---------|
+| `users.csv` | Пользователи | `repo` (sync.RWMutex) |
+| `sources.csv` | Источники видео | `repo` (sync.RWMutex) |
+| `rooms.csv` | Комнаты (метаданные) | `room/store.go` (sync.RWMutex) |
+
+Состояние плеера (playing, position) — in-memory, без персистентности.
 
 ## Роуты
 
 ### Публичные
 
 | Метод | Путь | Обработчик |
-|-------|------|----------|
+|-------|------|-----------|
 | GET | `/healthz` | health check |
 | POST | `/auth/register` | auth.Register |
 | POST | `/auth/login` | auth.Login |
 | POST | `/auth/logout` | auth.Logout |
 | GET | `/auth/me` | auth.Me |
+| GET | `/ws/{invite_code}` | realtime.ServeWS (self-auth) |
 
 ### Защищённые
 
 | Метод | Путь | Обработчик |
-|-------|------|----------|
+|-------|------|-----------|
 | GET | `/api/sources` | source.GetAll |
 | POST | `/api/sources` | source.Add |
 | POST | `/api/rooms` | room.Create |
@@ -84,16 +87,11 @@ Thread-safe через `sync.RWMutex`.
 | DELETE | `/api/rooms/{invite_code}` | room.Delete |
 | PATCH | `/api/rooms/{invite_code}/source` | room.PatchSource |
 
-### WebSocket
-
-| Метод | Путь | Обработчик |
-|-------|------|----------|
-| GET | `/ws/{invite_code}` | chat.ServeWS |
-
 ## Зависимости
 
-| Модуль | Версия |
-|--------|--------|
-| `gorilla/websocket` | v1.5.3 |
-| `github.com/google/uuid` | v1.6.0 |
-| `golang.org/x/crypto` | bcrypt |
+| Модуль | Версия | Назначение |
+|--------|--------|-----------|
+| `gorilla/websocket` | v1.5.3 | WebSocket |
+| `github.com/google/uuid` | v1.6.0 | UUID |
+| `golang.org/x/crypto` | v0.35.0 | bcrypt |
+| `joho/godotenv` | v1.5.1 | .env загрузка |

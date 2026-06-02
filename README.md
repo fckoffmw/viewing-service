@@ -10,7 +10,8 @@
 | [docs/arch.md](docs/arch.md) | Архитектура |
 | [docs/run.md](docs/run.md) | Запуск |
 | [docs/api.md](docs/api.md) | REST API |
-| [docs/auth.md](docs/auth.md) | Аутентификация |
+| [docs/features/auth.md](docs/features/auth.md) | Аутентификация |
+| [docs/features/ws-protocol.md](docs/features/ws-protocol.md) | WebSocket протокол |
 | [docs/tasks.md](docs/tasks.md) | TODO |
 
 ## Текущее состояние

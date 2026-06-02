@@ -8,6 +8,7 @@ type chatPayload struct {
 
 type playerPayload struct {
 	Position float64 `json:"position"`
+	Playing  *bool   `json:"playing,omitempty"`
 }
 
 type syncPayload struct {

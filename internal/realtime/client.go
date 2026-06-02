@@ -99,6 +99,8 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc authService, w http
 		send:     make(chan outgoingMessage, clientBufSize),
 	}
 
+	log.Info("ws client connected", "username", user.Username, "user_id", user.ID, "room_id", inviteCode)
+
 	roomHub.Register() <- client
 
 	go client.writePump(log)
@@ -139,6 +141,12 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 			log.Debug("ws: decode error", "err", err)
 			continue
 		}
+
+		log.Info("ws message received",
+			"type", msg.Type,
+			"username", c.username,
+			"payload", string(msg.Payload),
+		)
 
 		evt := incomingEvent{
 			Username: c.username,
@@ -188,6 +196,8 @@ func (c *client) writePump(log *slog.Logger) {
 
 				return
 			}
+
+			log.Debug("ws message sent", "type", msg.Type, "username", msg.Username, "payload", string(data))
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {

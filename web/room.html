@@ -5,18 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>w2g — Комната</title>
   <link rel="stylesheet" href="/static/app.css">
+  <script src="https://vk.com/js/api/videoplayer.js" async></script>
 </head>
 <body class="room-body">
 
-  <div class="room-video">
-    <div class="room-top-left">
-      <a href="/" title="На главную">←</a>
-    </div>
-    <div class="room-video-inner">
-      <div id="room-placeholder" class="room-placeholder">Загрузка...</div>
-      <iframe id="room-player" style="display:none" allowfullscreen></iframe>
-    </div>
+<div class="room-video">
+  <div class="room-top-left">
+    <a href="/" title="На главную">←</a>
   </div>
+  <div class="room-video-inner">
+    <div id="room-placeholder" class="room-placeholder">Загрузка...</div>
+    <iframe id="room-player" style="display:none" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  </div>
+</div>
 
   <div class="room-chat">
     <div class="room-chat-header">
@@ -40,16 +41,518 @@
     </form>
   </div>
 
-  <div class="modal-overlay" id="source-modal" style="display:none" onclick="if(event.target===this)closeSourceModal()">
-    <div class="modal">
-      <h2>Источники</h2>
-      <div class="modal-source-list" id="source-list"></div>
-      <div class="modal-btns">
-        <button class="btn btn-secondary" onclick="closeSourceModal()">Отмена</button>
-      </div>
+<div class="modal-overlay" id="source-modal" style="display:none" onclick="if(event.target===this)closeSourceModal()">
+  <div class="modal">
+    <h2>Источники</h2>
+    <div class="modal-source-list" id="source-list"></div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeSourceModal()">Отмена</button>
     </div>
   </div>
-  
-  <script src="/static/room.js"></script>
+</div>
+
+<script>
+var currentUsername = "";
+var currentUserId = "";
+var inviteCode = "";
+var roomOwnerId = "";
+var ws = null;
+var reconnectTimer = null;
+
+var vkPlayer = null;
+var isSyncing = false;
+var syncTimer = null;
+var lastNaturalPosition = 0;
+var lastTickTime = 0;
+var wasPlaying = false;
+var pendingSync = null;
+
+function beginSync() {
+  console.log("[SYNC] begin", "was:", isSyncing);
+  isSyncing = true;
+  clearTimeout(syncTimer);
+}
+
+function endSync() {
+  console.log("[SYNC] end (scheduled in 1s)");
+  syncTimer = setTimeout(function() {
+    console.log("[SYNC] expired -> false");
+    isSyncing = false;
+    if (vkPlayer && typeof vkPlayer.getCurrentTime === "function") {
+      lastNaturalPosition = vkPlayer.getCurrentTime() || 0;
+    }
+    lastTickTime = Date.now();
+  }, 1000);
+}
+
+function wsSend(type, payload) {
+  var msg = JSON.stringify({type: type, payload: payload});
+  console.log("[WS] send", type, JSON.stringify(payload));
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
+}
+
+function applySync(data) {
+  if (!vkPlayer || !data || !data.payload) return;
+  console.log("[SYNC] applying sync, isSyncing before:", isSyncing);
+  beginSync();
+  var p = data.payload;
+  var pos = p.position;
+  if (p.playing && p.updated_at) {
+    var elapsed = Math.max(0, (Date.now() - new Date(p.updated_at).getTime()) / 1000);
+    pos = p.position + elapsed;
+  }
+  console.log("[SYNC] pos=", pos, "playing=", p.playing);
+  lastNaturalPosition = pos;
+  lastTickTime = Date.now();
+  wasPlaying = !!p.playing;
+  vkPlayer.seek(pos);
+  if (p.playing) vkPlayer.play();
+  else vkPlayer.pause();
+  endSync();
+}
+
+async function checkAuth() {
+  try {
+    var res = await fetch("/auth/me");
+    if (!res.ok) { window.location.href = "/login.html"; return false; }
+    var user = await res.json();
+    currentUsername = user.username;
+    currentUserId = user.id;
+    return true;
+  } catch {
+    window.location.href = "/login.html";
+    return false;
+  }
+}
+
+async function loadRoom() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (!res.ok) { setPlaceholder("Комната не найдена"); return; }
+    var room = await res.json();
+
+    document.title = "w2g — " + (room.name || "Комната");
+    roomOwnerId = room.owner_id;
+    updateMembers(room.members_online);
+
+    if (room.current_source && room.current_source.url) {
+      showVideo(room.current_source.url);
+      updateSourceName(room.current_source.name || "");
+    } else {
+      setPlaceholder('Источник не выбран. <a href="/content.html?invite=' + inviteCode + '">Выберите на странице контента</a>.');
+      updateSourceName("");
+    }
+
+    var isOwner = roomOwnerId === currentUserId;
+    document.getElementById("menu-change-source").style.display = isOwner ? "" : "none";
+    document.getElementById("menu-delete-room").style.display = isOwner ? "" : "none";
+  } catch {
+    setPlaceholder("Ошибка загрузки");
+  }
+}
+
+function setPlaceholder(html) {
+  var el = document.getElementById("room-placeholder");
+  el.innerHTML = html;
+  el.style.display = "flex";
+  document.getElementById("room-player").style.display = "none";
+}
+
+function showVideo(url) {
+  var decoded = decodeURIComponent(url);
+  var iframe = document.getElementById("room-player");
+
+  try {
+    var u = new URL(decoded);
+    if (u.hostname.indexOf("vk") !== -1 && !u.searchParams.has("js_api")) {
+      u.searchParams.set("js_api", "1");
+      decoded = u.toString();
+    }
+  } catch (e) {}
+
+  iframe.src = decoded;
+  iframe.style.display = "block";
+  document.getElementById("room-placeholder").style.display = "none";
+
+  vkPlayer = null;
+  isSyncing = false;
+  clearTimeout(syncTimer);
+
+  iframe.addEventListener("load", function initVK() {
+    iframe.removeEventListener("load", initVK);
+    tryInitVKPlayer();
+  });
+}
+
+function tryInitVKPlayer() {
+  if (!window.VK) {
+    setTimeout(tryInitVKPlayer, 1000);
+    return;
+  }
+
+  var iframe = document.getElementById("room-player");
+  if (!iframe || !iframe.src) return;
+
+  if (vkPlayer) return;
+
+  try {
+    vkPlayer = VK.VideoPlayer(iframe);
+    console.log("[VK] player initialized");
+
+    vkPlayer.on("started", function () {
+      var args = arguments[0] || {};
+      console.log("[VK] started time=", args.time);
+      if (isSyncing) { console.log("[VK] started: SKIP (isSyncing)"); return; }
+      var pos = args.time || 0;
+      wasPlaying = true;
+      lastNaturalPosition = pos;
+      lastTickTime = Date.now();
+      console.log("[VK] started: send play @", pos);
+      wsSend("play", { position: pos });
+    });
+
+    vkPlayer.on("paused", function () {
+      var args = arguments[0] || {};
+      console.log("[VK] paused time=", args.time);
+      if (isSyncing) { console.log("[VK] paused: SKIP (isSyncing)"); return; }
+      var pos = args.time || 0;
+      wasPlaying = false;
+      lastNaturalPosition = pos;
+      lastTickTime = Date.now();
+      console.log("[VK] paused: send pause @", pos);
+      wsSend("pause", { position: pos });
+    });
+
+    vkPlayer.on("timeupdate", function () {
+      var pos = (typeof vkPlayer.getCurrentTime === "function" ? vkPlayer.getCurrentTime() : 0) || 0;
+      var now = Date.now();
+
+      if (isSyncing) {
+        lastNaturalPosition = pos;
+        lastTickTime = now;
+        return;
+      }
+
+      var elapsed = (now - lastTickTime) / 1000;
+      var expected = lastNaturalPosition + elapsed;
+      var diff = pos - expected;
+      if (diff > 3.0 || diff < -3.0) {
+        console.log("[VK] seek detected @", pos, "expected:", expected, "diff:", diff, "wasPlaying:", wasPlaying);
+        wsSend("seek", { position: pos, playing: wasPlaying });
+      }
+
+      lastNaturalPosition = pos;
+      lastTickTime = now;
+    });
+    console.log("[VK] init complete, pendingSync=", !!pendingSync);
+
+    if (pendingSync) {
+      applySync(pendingSync);
+    }
+  } catch (e) {
+    console.log("[VK] init error:", e);
+  }
+}
+
+function updateSourceName(name) {
+  document.getElementById("room-source-name").textContent = name || "";
+}
+
+function updateMembers(n) {
+  var el = document.getElementById("room-member-count");
+  el.textContent = n > 0 ? "· " + n : "";
+}
+
+function setStatus(status) {
+  var dot = document.getElementById("room-status-dot");
+  var text = document.getElementById("room-online-text");
+  dot.className = "room-status-dot " + status;
+  text.textContent = status === "online" ? "онлайн" : "отключено";
+}
+
+function connectWS() {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  var proto = location.protocol === "https:" ? "wss:" : "ws:";
+  ws = new WebSocket(proto + "//" + location.host + "/ws/" + inviteCode);
+
+  ws.onopen = function() {
+    setStatus("online");
+    appendMessage("system", "", "Подключились");
+    fetchMembers();
+  };
+
+  ws.onmessage = function(e) {
+    var data = JSON.parse(e.data);
+    console.log("[WS] recv", data.type, JSON.stringify(data.payload));
+
+    switch (data.type) {
+      case "sync":
+        pendingSync = data;
+        if (vkPlayer && data.payload) {
+          applySync(data);
+        } else {
+          console.log("[SYNC] queued — vkPlayer=", !!vkPlayer);
+        }
+        return;
+
+      case "play":
+        if (vkPlayer && data.payload) {
+          console.log("[CMD] play seek @", data.payload.position);
+          beginSync();
+          lastNaturalPosition = data.payload.position;
+          lastTickTime = Date.now();
+          wasPlaying = true;
+          vkPlayer.seek(data.payload.position);
+          vkPlayer.play();
+          endSync();
+        } else {
+          console.log("[CMD] play SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
+        }
+        return;
+
+      case "pause":
+        if (vkPlayer && data.payload) {
+          console.log("[CMD] pause @", data.payload.position);
+          beginSync();
+          lastNaturalPosition = data.payload.position;
+          lastTickTime = Date.now();
+          wasPlaying = false;
+          vkPlayer.seek(data.payload.position);
+          vkPlayer.pause();
+          endSync();
+        } else {
+          console.log("[CMD] pause SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
+        }
+        return;
+
+      case "seek":
+        if (vkPlayer && data.payload) {
+          var playing = data.payload.playing !== undefined ? data.payload.playing : null;
+          console.log("[CMD] seek @", data.payload.position, "playing:", playing);
+          beginSync();
+          lastNaturalPosition = data.payload.position;
+          lastTickTime = Date.now();
+          if (playing !== null) wasPlaying = playing;
+          vkPlayer.seek(data.payload.position);
+          if (playing === true) {
+            try { vkPlayer.volume(0); } catch(e) {}
+            vkPlayer.play();
+          } else if (playing === false) {
+            vkPlayer.pause();
+          }
+          endSync();
+        } else {
+          console.log("[CMD] seek SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
+        }
+        return;
+
+      case "source_changed":
+        vkPlayer = null;
+        if (data.payload && data.payload.source_url) {
+          showVideo(data.payload.source_url);
+          refreshSourceName();
+        }
+        return;
+
+      default:
+        if (data.type === "chat" && data.payload) {
+          var type = data.username === currentUsername ? "me" : "other";
+          appendMessage(type, data.username, data.payload.text || "");
+        }
+    }
+  };
+
+  ws.onclose = function() {
+    setStatus("offline");
+    appendMessage("system", "", "Отключились");
+    scheduleReconnect();
+  };
+}
+
+function scheduleReconnect() {
+  reconnectTimer = setTimeout(connectWS, 5000);
+}
+
+async function fetchMembers() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (res.ok) {
+      var room = await res.json();
+      updateMembers(room.members_online);
+    }
+  } catch {}
+}
+
+async function refreshSourceName() {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode);
+    if (res.ok) {
+      var room = await res.json();
+      var name = room.current_source ? room.current_source.name : "";
+      updateSourceName(name);
+    }
+  } catch {}
+}
+
+function appendMessage(type, username, text) {
+  var el = document.getElementById("room-messages");
+  var div = document.createElement("div");
+  if (type === "system") {
+    div.className = "room-msg system";
+    div.textContent = text;
+  } else {
+    div.className = "room-msg";
+    var color = getUserColor(username);
+    div.style.borderLeftColor = color;
+    var nameSpan = document.createElement("span");
+    nameSpan.className = "room-msg-username";
+    nameSpan.style.color = color;
+    nameSpan.textContent = username + ":";
+    var textSpan = document.createElement("span");
+    textSpan.className = "room-msg-text";
+    textSpan.textContent = text;
+    div.appendChild(nameSpan);
+    div.appendChild(textSpan);
+  }
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function getUserColor(name) {
+  var hash = 2166136261;
+  for (var i = 0; i < name.length; i++) {
+    hash ^= name.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return "hsl(" + Math.abs(hash % 360) + ", 80%, 65%)";
+}
+
+// --- menu ---
+document.addEventListener("click", function(e) {
+  var menu = document.getElementById("room-header-menu");
+  var btn = document.getElementById("room-menu-btn");
+  if (menu.classList.contains("open") && !btn.contains(e.target) && !menu.contains(e.target)) {
+    menu.classList.remove("open");
+  }
+});
+
+document.getElementById("room-menu-btn").addEventListener("click", function(e) {
+  e.stopPropagation();
+  document.getElementById("room-header-menu").classList.toggle("open");
+});
+
+function copyLink() {
+  var url = window.location.origin + "/room.html?invite=" + inviteCode;
+  navigator.clipboard.writeText(url).then(function() {
+    showToast("Ссылка скопирована");
+  }, function() {
+    showToast("Ошибка копирования");
+  });
+  document.getElementById("room-header-menu").classList.remove("open");
+}
+
+function deleteRoom() {
+  if (!confirm("Удалить комнату?")) return;
+  fetch("/api/rooms/" + inviteCode, { method: "DELETE" }).then(function(res) {
+    if (res.ok) {
+      window.location.href = "/";
+    } else {
+      showToast("Ошибка удаления");
+    }
+  }).catch(function() {
+    showToast("Ошибка удаления");
+  });
+  document.getElementById("room-header-menu").classList.remove("open");
+}
+
+// --- source modal ---
+function openSourceModal() {
+  document.getElementById("room-header-menu").classList.remove("open");
+  document.getElementById("source-modal").style.display = "flex";
+  loadSourceList();
+}
+
+function closeSourceModal() {
+  document.getElementById("source-modal").style.display = "none";
+}
+
+async function loadSourceList() {
+  var list = document.getElementById("source-list");
+  try {
+    var res = await fetch("/api/sources");
+    if (!res.ok) { list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Ошибка загрузки</p>"; return; }
+    var sources = await res.json();
+    if (sources.length === 0) {
+      list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Нет источников. <a href='/content.html' style='color:#888;'>Добавьте</a>.</p>";
+      return;
+    }
+    list.innerHTML = "";
+    sources.forEach(function(s) {
+      var btn = document.createElement("button");
+      btn.className = "modal-source-item";
+      btn.textContent = s.name;
+      btn.onclick = function() { selectSource(s.id); };
+      list.appendChild(btn);
+    });
+  } catch {
+    list.innerHTML = "<p style='color:#555;text-align:center;padding:12px;font-size:13px;'>Ошибка загрузки</p>";
+  }
+}
+
+async function selectSource(id) {
+  try {
+    var res = await fetch("/api/rooms/" + inviteCode + "/source", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: id }),
+    });
+    if (res.ok) {
+      closeSourceModal();
+    } else {
+      showToast("Не удалось сменить источник");
+    }
+  } catch {
+    showToast("Ошибка");
+  }
+}
+
+// --- form ---
+document.getElementById("room-chat-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  var input = document.getElementById("room-chat-input");
+  var text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  wsSend("chat", { text: text });
+  appendMessage("me", currentUsername, text);
+  input.value = "";
+});
+
+// --- toast ---
+function showToast(msg) {
+  var t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { t.remove(); }, 2500);
+}
+
+// --- start ---
+window.addEventListener("DOMContentLoaded", async function() {
+  var ok = await checkAuth();
+  if (!ok) return;
+
+  var params = new URLSearchParams(window.location.search);
+  inviteCode = params.get("invite");
+  if (!inviteCode) {
+    setPlaceholder("Нет кода приглашения");
+    return;
+  }
+
+  await loadRoom();
+  tryInitVKPlayer();
+  connectWS();
+});
+</script>
+
 </body>
 </html>

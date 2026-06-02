@@ -127,6 +127,12 @@ func (h *hub) Run() {
 }
 
 func (h *hub) handleEvent(evt incomingEvent) {
+	h.log.Info("event received",
+		"type", evt.Message.Type,
+		"username", evt.Username,
+		"payload", string(evt.Message.Payload),
+	)
+
 	switch evt.Message.Type {
 	case MsgTypeChat:
 		var payload chatPayload
@@ -160,12 +166,15 @@ func (h *hub) handleEvent(evt incomingEvent) {
 			select {
 			case client.Send() <- outgoing:
 			default:
+				h.log.Warn("chat: dropping slow client", "username", evt.Username)
 				delete(h.clients, client)
 				close(client.Send())
 			}
 		}
 		shouldShutdown := len(h.clients) == 0
 		h.mu.Unlock()
+
+		h.log.Info("chat broadcast done", "clients_remaining", len(h.clients))
 
 		if shouldShutdown {
 			h.shutdownOnEmpty()
@@ -182,6 +191,8 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.mu.Lock()
 		h.applyPlayerEvent(true, payload.Position)
 		h.mu.Unlock()
+
+		h.log.Info("player state after play", "playing", h.getState().Playing, "position", h.getState().Position)
 
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypePlay,
@@ -201,6 +212,8 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.applyPlayerEvent(false, payload.Position)
 		h.mu.Unlock()
 
+		h.log.Info("player state after pause", "playing", h.getState().Playing, "position", h.getState().Position)
+
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypePause,
 			Username: evt.Username,
@@ -217,8 +230,13 @@ func (h *hub) handleEvent(evt incomingEvent) {
 
 		h.mu.Lock()
 		h.state.Position = payload.Position
+		if payload.Playing != nil {
+			h.state.Playing = *payload.Playing
+		}
 		h.state.UpdatedAt = time.Now()
 		h.mu.Unlock()
+
+		h.log.Info("player state after seek", "playing", h.getState().Playing, "position", h.getState().Position)
 
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypeSeek,
@@ -237,6 +255,8 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.mu.Lock()
 		h.applySourceEvent(payload.SourceID, payload.SourceURL)
 		h.mu.Unlock()
+
+		h.log.Info("player state after source_changed", "source_id", payload.SourceID, "source_url", payload.SourceURL)
 
 		h.broadcastAll(outgoingMessage{
 			Type:    MsgTypeSourceChanged,
@@ -261,14 +281,23 @@ func (h *hub) broadcastAll(msg outgoingMessage) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
+	h.log.Info("broadcasting",
+		"type", msg.Type,
+		"username", msg.Username,
+		"clients", len(h.clients),
+	)
+
 	for c := range h.clients {
 		select {
 		case c.Send() <- msg:
 		default:
+			h.log.Warn("broadcast: dropping slow client", "type", msg.Type)
 			delete(h.clients, c)
 			close(c.Send())
 		}
 	}
+
+	h.log.Info("broadcast done", "type", msg.Type, "clients_after", len(h.clients))
 }
 
 func (h *hub) Close() {
