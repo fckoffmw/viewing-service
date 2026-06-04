@@ -60,30 +60,10 @@ var ws = null;
 var reconnectTimer = null;
 
 var vkPlayer = null;
-var isSyncing = false;
-var syncTimer = null;
-var lastNaturalPosition = 0;
-var lastTickTime = 0;
-var wasPlaying = false;
+var pollTimer = null;
+var suppressCount = 0;
+var lastKnownState = { playing: false, position: 0 };
 var pendingSync = null;
-
-function beginSync() {
-  console.log("[SYNC] begin", "was:", isSyncing);
-  isSyncing = true;
-  clearTimeout(syncTimer);
-}
-
-function endSync() {
-  console.log("[SYNC] end (scheduled in 1s)");
-  syncTimer = setTimeout(function() {
-    console.log("[SYNC] expired -> false");
-    isSyncing = false;
-    if (vkPlayer && typeof vkPlayer.getCurrentTime === "function") {
-      lastNaturalPosition = vkPlayer.getCurrentTime() || 0;
-    }
-    lastTickTime = Date.now();
-  }, 1000);
-}
 
 function wsSend(type, payload) {
   var msg = JSON.stringify({type: type, payload: payload});
@@ -91,24 +71,95 @@ function wsSend(type, payload) {
   if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
 }
 
-function applySync(data) {
-  if (!vkPlayer || !data || !data.payload) return;
-  console.log("[SYNC] applying sync, isSyncing before:", isSyncing);
-  beginSync();
-  var p = data.payload;
-  var pos = p.position;
-  if (p.playing && p.updated_at) {
-    var elapsed = Math.max(0, (Date.now() - new Date(p.updated_at).getTime()) / 1000);
-    pos = p.position + elapsed;
+function pollPlayer() {
+  if (!vkPlayer) return;
+
+  try {
+    var currentTime = vkPlayer.getCurrentTime() || 0;
+    var stateStr = vkPlayer.getState();
+    if (!stateStr || stateStr === 'uninited') return;
+
+    var currentPlaying = stateStr === 'playing';
+
+    if (suppressCount > 0) {
+      suppressCount--;
+      lastKnownState.playing = currentPlaying;
+      lastKnownState.position = currentTime;
+      return;
+    }
+
+    if (currentPlaying !== lastKnownState.playing) {
+      console.log("[POLL] play state change", currentPlaying ? "play" : "pause", "@", currentTime);
+      wsSend(currentPlaying ? "play" : "pause", { position: currentTime });
+      lastKnownState.playing = currentPlaying;
+      lastKnownState.position = currentTime;
+      return;
+    }
+
+    var diff = currentTime - lastKnownState.position;
+    lastKnownState.position = currentTime;
+    if (diff > 3.0 || diff < -3.0) {
+      console.log("[POLL] seek detected @", currentTime, "diff:", diff);
+      wsSend("seek", { position: currentTime, playing: currentPlaying });
+    }
+  } catch(e) {
+    console.log("[POLL] error:", e);
   }
-  console.log("[SYNC] pos=", pos, "playing=", p.playing);
-  lastNaturalPosition = pos;
-  lastTickTime = Date.now();
-  wasPlaying = !!p.playing;
-  vkPlayer.seek(pos);
-  if (p.playing) vkPlayer.play();
-  else vkPlayer.pause();
-  endSync();
+}
+
+function startPoll() {
+  if (pollTimer) return;
+  console.log("[POLL] starting");
+  pollTimer = setInterval(pollPlayer, 200);
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function applyRemoteCommand(type, data) {
+  var p = data.payload || data;
+  if (!p || !vkPlayer) return;
+
+  console.log("[CMD] apply", type, JSON.stringify(p));
+  suppressCount = 4;
+
+  switch (type) {
+    case "sync":
+      var pos = p.position;
+      if (p.playing && p.updated_at) {
+        pos = Math.max(0, pos + (Date.now() - new Date(p.updated_at).getTime()) / 1000);
+      }
+      vkPlayer.seek(pos);
+      if (p.playing) { vkPlayer.play(); } else { vkPlayer.pause(); }
+      lastKnownState = { playing: !!p.playing, position: pos };
+      break;
+    case "play":
+      vkPlayer.seek(p.position);
+      vkPlayer.play();
+      lastKnownState = { playing: true, position: p.position };
+      break;
+    case "pause":
+      vkPlayer.seek(p.position);
+      vkPlayer.pause();
+      lastKnownState = { playing: false, position: p.position };
+      break;
+    case "seek":
+      vkPlayer.seek(p.position);
+      if (p.playing === true) {
+        vkPlayer.play();
+        lastKnownState = { playing: true, position: p.position };
+      } else if (p.playing === false) {
+        vkPlayer.pause();
+        lastKnownState = { playing: false, position: p.position };
+      } else {
+        lastKnownState.position = p.position;
+      }
+      break;
+  }
 }
 
 async function checkAuth() {
@@ -159,6 +210,14 @@ function setPlaceholder(html) {
 }
 
 function showVideo(url) {
+  stopPoll();
+  if (vkPlayer) {
+    try { vkPlayer.destroy(); } catch(e) {}
+    vkPlayer = null;
+  }
+  lastKnownState = { playing: false, position: 0 };
+  suppressCount = 0;
+
   var decoded = decodeURIComponent(url);
   var iframe = document.getElementById("room-player");
 
@@ -174,81 +233,32 @@ function showVideo(url) {
   iframe.style.display = "block";
   document.getElementById("room-placeholder").style.display = "none";
 
-  vkPlayer = null;
-  isSyncing = false;
-  clearTimeout(syncTimer);
-
   iframe.addEventListener("load", function initVK() {
     iframe.removeEventListener("load", initVK);
-    tryInitVKPlayer();
+    initPlayer();
   });
 }
 
-function tryInitVKPlayer() {
+function initPlayer() {
   if (!window.VK) {
-    setTimeout(tryInitVKPlayer, 1000);
+    setTimeout(initPlayer, 1000);
     return;
   }
 
   var iframe = document.getElementById("room-player");
   if (!iframe || !iframe.src) return;
-
   if (vkPlayer) return;
 
   try {
     vkPlayer = VK.VideoPlayer(iframe);
     console.log("[VK] player initialized");
 
-    vkPlayer.on("started", function () {
-      var args = arguments[0] || {};
-      console.log("[VK] started time=", args.time);
-      if (isSyncing) { console.log("[VK] started: SKIP (isSyncing)"); return; }
-      var pos = args.time || 0;
-      wasPlaying = true;
-      lastNaturalPosition = pos;
-      lastTickTime = Date.now();
-      console.log("[VK] started: send play @", pos);
-      wsSend("play", { position: pos });
-    });
-
-    vkPlayer.on("paused", function () {
-      var args = arguments[0] || {};
-      console.log("[VK] paused time=", args.time);
-      if (isSyncing) { console.log("[VK] paused: SKIP (isSyncing)"); return; }
-      var pos = args.time || 0;
-      wasPlaying = false;
-      lastNaturalPosition = pos;
-      lastTickTime = Date.now();
-      console.log("[VK] paused: send pause @", pos);
-      wsSend("pause", { position: pos });
-    });
-
-    vkPlayer.on("timeupdate", function () {
-      var pos = (typeof vkPlayer.getCurrentTime === "function" ? vkPlayer.getCurrentTime() : 0) || 0;
-      var now = Date.now();
-
-      if (isSyncing) {
-        lastNaturalPosition = pos;
-        lastTickTime = now;
-        return;
-      }
-
-      var elapsed = (now - lastTickTime) / 1000;
-      var expected = lastNaturalPosition + elapsed;
-      var diff = pos - expected;
-      if (diff > 3.0 || diff < -3.0) {
-        console.log("[VK] seek detected @", pos, "expected:", expected, "diff:", diff, "wasPlaying:", wasPlaying);
-        wsSend("seek", { position: pos, playing: wasPlaying });
-      }
-
-      lastNaturalPosition = pos;
-      lastTickTime = now;
-    });
-    console.log("[VK] init complete, pendingSync=", !!pendingSync);
-
     if (pendingSync) {
-      applySync(pendingSync);
+      applyRemoteCommand("sync", pendingSync);
+      pendingSync = null;
     }
+
+    startPoll();
   } catch (e) {
     console.log("[VK] init error:", e);
   }
@@ -289,76 +299,31 @@ function connectWS() {
       case "sync":
         pendingSync = data;
         if (vkPlayer && data.payload) {
-          applySync(data);
-        } else {
-          console.log("[SYNC] queued — vkPlayer=", !!vkPlayer);
+          applyRemoteCommand("sync", data);
         }
         return;
 
       case "play":
-        if (vkPlayer && data.payload) {
-          console.log("[CMD] play seek @", data.payload.position);
-          beginSync();
-          lastNaturalPosition = data.payload.position;
-          lastTickTime = Date.now();
-          wasPlaying = true;
-          vkPlayer.seek(data.payload.position);
-          vkPlayer.play();
-          endSync();
-        } else {
-          console.log("[CMD] play SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
-        }
-        return;
-
       case "pause":
-        if (vkPlayer && data.payload) {
-          console.log("[CMD] pause @", data.payload.position);
-          beginSync();
-          lastNaturalPosition = data.payload.position;
-          lastTickTime = Date.now();
-          wasPlaying = false;
-          vkPlayer.seek(data.payload.position);
-          vkPlayer.pause();
-          endSync();
-        } else {
-          console.log("[CMD] pause SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
-        }
-        return;
-
       case "seek":
         if (vkPlayer && data.payload) {
-          var playing = data.payload.playing !== undefined ? data.payload.playing : null;
-          console.log("[CMD] seek @", data.payload.position, "playing:", playing);
-          beginSync();
-          lastNaturalPosition = data.payload.position;
-          lastTickTime = Date.now();
-          if (playing !== null) wasPlaying = playing;
-          vkPlayer.seek(data.payload.position);
-          if (playing === true) {
-            try { vkPlayer.volume(0); } catch(e) {}
-            vkPlayer.play();
-          } else if (playing === false) {
-            vkPlayer.pause();
-          }
-          endSync();
-        } else {
-          console.log("[CMD] seek SKIP — vkPlayer=", !!vkPlayer, "hasPayload=", !!data.payload);
+          applyRemoteCommand(data.type, data);
         }
         return;
 
       case "source_changed":
-        vkPlayer = null;
         if (data.payload && data.payload.source_url) {
           showVideo(data.payload.source_url);
           refreshSourceName();
         }
         return;
 
-      default:
-        if (data.type === "chat" && data.payload) {
+      case "chat":
+        if (data.payload) {
           var type = data.username === currentUsername ? "me" : "other";
           appendMessage(type, data.username, data.payload.text || "");
         }
+        return;
     }
   };
 
@@ -549,7 +514,6 @@ window.addEventListener("DOMContentLoaded", async function() {
   }
 
   await loadRoom();
-  tryInitVKPlayer();
   connectWS();
 });
 </script>
