@@ -98,6 +98,7 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 			return nil, fmt.Errorf("when writing to %s: %w", unit.filename, err)
 		}
 
+		//nolint:errcheck
 		file.Close()
 	}
 
@@ -193,6 +194,7 @@ func (s *csvStorage) AddSource(source *source.Source) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
@@ -222,6 +224,7 @@ func (s *csvStorage) AddUser(user *auth.User) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
@@ -356,6 +359,7 @@ func (s *csvStorage) getNewUserID() string {
 	return strconv.Itoa(s.dataStruct[usersTable].lastID + 1)
 }
 
+//nolint:errcheck
 func readAllFromFile(path string) ([][]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -371,6 +375,7 @@ func writeAllToFile(path string, records [][]string) error {
 	if err != nil {
 		return fmt.Errorf("when create file %s: %w", path, err)
 	}
+	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)

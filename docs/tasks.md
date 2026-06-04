@@ -4,26 +4,28 @@
 
 ### TODO
 
-- [ ] sync
-  - [ ] client side: CRITICAL BUG: после сика + плей 1го - у 2го не делается плей а сик виден только после паус 1
-  - [x] docs
-  - [x] структура состояния
-  - [x] типы возможных ивентов (сверяясь с sync.md)
-  - [x] сервисный слой
-  - [x] зачем ? extractInviteCodeFromPath(r.URL.Path) - убрать
 - [ ] deploy добавить флаг nginx/web директории для копирования туда фронта
-- [ ] настроить инфру: запуск taskfile, проверка тестов, линтеры
+- [ ] логирование проработать / переработать
 - [ ] админка
 - [ ] кеширование
+- [ ] postgresql
+- [ ] redis
 
 #### тех долг
 - [ ] full rest доделать для всех видов ресурсов
 - [ ] CSV `rowsTo[T]` uses reflection** — `repo/repo.go:388-446`: fragile, slow, type-unsafe CSV deserialization via `reflect`. Already in tasks.md but still high priority.
 - [ ] разделение источников помимо VK
 
-
 ### DONE
 
+- [x] настроить инфру: запуск taskfile, проверка тестов, линтеры
+- [x] sync
+  - [x] client side: CRITICAL BUG: после сика + плей 1го - у 2го не делается плей а сик виден только после паус 1
+  - [x] docs
+  - [x] структура состояния
+  - [x] типы возможных ивентов (сверяясь с sync.md)
+  - [x] сервисный слой
+  - [x] зачем ? extractInviteCodeFromPath(r.URL.Path) - убрать
 - [x] побольше логирования с разделением по уровням
 - [x] rooms: docs, review, tests
 - [x] много комнат

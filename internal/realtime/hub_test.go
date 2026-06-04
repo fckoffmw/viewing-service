@@ -39,10 +39,6 @@ func newTestHub(t *testing.T, numClients int) *testHarness {
 	return &testHarness{hub: h, clients: clients}
 }
 
-func (th *testHarness) close() {
-	th.hub.Close()
-}
-
 func (th *testHarness) recv(idx int) outgoingMessage {
 	select {
 	case msg := <-th.clients[idx].ch:

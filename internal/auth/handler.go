@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"w2g/internal/apperrors"
+	"w2g/internal/utils/ctx"
 	"w2g/internal/http/response"
 )
 
@@ -35,7 +36,10 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 }
 
 func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+
+	//nolint:errcheck
+	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
@@ -43,7 +47,6 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 		response.WriteBadRequest(w, "cannot read req body")
 		return
 	}
-	r.Body.Close()
 
 	sessionID, err := h.service.Login(creds.Username, creds.Password)
 	if err != nil {
@@ -66,7 +69,10 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) Register(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+
+	//nolint:errcheck
+	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
@@ -74,7 +80,6 @@ func (h *handler) Register(w http.ResponseWriter, r *http.Request) {
 		response.WriteBadRequest(w, "cannot read req body")
 		return
 	}
-	r.Body.Close()
 
 	sessionID, err := h.service.Register(creds.Username, creds.Password)
 	if err != nil {

@@ -1,6 +1,6 @@
 # REST API
 
-Все ошибки возвращают `{"error": "..."}` (кроме WebSocket upgrade).
+Все ошибки возвращают `{"error": "..."}` (кроме WebSocket upgrade, где plain text).
 
 ---
 
@@ -69,7 +69,7 @@
 
 ### GET /auth/me
 
-Информация о текущем пользователе. Требует `session_id` cookie.
+Информация о текущем пользователе. Аутентифицируется через `session_id` cookie (на уровне хендлера, middleware пропускает).
 
 **Response 200:**
 ```json
@@ -94,7 +94,7 @@
 [{"id": "1", "name": "Семь (1995)", "url": "https://vkvideo.ru/..."}]
 ```
 
-Пустой список: `null` (не `[]`).
+Пустой список: `null` (а не `[]`).
 
 **Response 500:**
 ```json
@@ -186,7 +186,10 @@
 ]
 ```
 
+Пустой список: `[]`.
+
 `current_source` — присутствует только если для комнаты выбран источник (`omitempty`).
+`members_online` — количество участников в WebSocket-комнате (in-memory, без комнаты — 0).
 
 ---
 
@@ -281,7 +284,7 @@
 
 ### X-Request-ID
 
-Идентификатор запроса (8 символов, первая часть UUID) для трейсинга. Добавляется в каждый ответ.
+Идентификатор запроса (8 символов UUID) для трейсинга. Добавляется в каждый ответ.
 
 ---
 
@@ -300,18 +303,19 @@
 
 Каждый фрейм — JSON:
 ```json
-{"type": "<message_type>", "username": "...", "timestamp": "...", "payload": {...}}
+{"type": "<message_type>", "username": "...", "payload": {...}}
 ```
 
-Поля `username` и `timestamp` присутствуют не для всех типов.
+Поле `username` присутствует не для всех типов.
+Поле `timestamp` — зарезервировано, пока не используется (`omitempty`).
 
 #### Входящие (клиент → сервер)
 
 ```json
-{"type": "chat",            "payload": {"text": "hello"}}
-{"type": "play",            "payload": {"position": 42.5}}
-{"type": "pause",           "payload": {"position": 42.5}}
-{"type": "seek",            "payload": {"position": 120.0}}
+{"type": "chat",  "payload": {"text": "hello"}}
+{"type": "play",  "payload": {"position": 42.5}}
+{"type": "pause", "payload": {"position": 42.5}}
+{"type": "seek",  "payload": {"position": 120.0}}
 ```
 
 #### Исходящие (сервер → клиент)
@@ -328,6 +332,7 @@
 #### Правила
 
 - `username` заполнен для `chat`, `play`, `pause`, `seek`; отсутствует для `sync` и `source_changed`.
-- `timestamp` — поле зарезервировано, пока не используется (`omitempty`).
+- `chat` не идёт отправителю (остальные — всем).
 - Чат: текст обрезается до 1000 символов.
-- `source_changed` приходит через HTTP PATCH и проксируется в WS (sender не указан).
+- `source_changed` приходит через HTTP PATCH и проксируется в WS (отправитель не указан).
+- `play`, `pause`, `seek` доступны любому аутентифицированному участнику комнаты.

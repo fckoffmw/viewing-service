@@ -25,11 +25,5 @@ type sourceChangedPayload struct {
 }
 
 func newSyncPayload(s state) syncPayload {
-	return syncPayload{
-		SourceID:  s.SourceID,
-		SourceURL: s.SourceURL,
-		Playing:   s.Playing,
-		Position:  s.Position,
-		UpdatedAt: s.UpdatedAt,
-	}
+	return syncPayload(s)
 }

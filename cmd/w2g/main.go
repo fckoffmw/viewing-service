@@ -84,6 +84,7 @@ func main() {
 	defer cancel()
 
 	log.Info("stopping HTTP server...")
+	//nolint:errcheck
 	server.Shutdown(ctx)
 
 	log.Info("stopping session cleanup...")

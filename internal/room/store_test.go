@@ -9,11 +9,10 @@ import (
 var errCSV = errors.New("csv error")
 
 type mockCSVStorage struct {
-	rooms     []Room
-	getErr    error
-	addErr    error
-	delErr    error
-	deleteErr error
+	rooms  []Room
+	getErr error
+	addErr error
+	delErr error
 }
 
 func (m *mockCSVStorage) GetAllRooms() ([]Room, error) {

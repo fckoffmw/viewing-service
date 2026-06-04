@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"w2g/internal/utils/ctx"
 	"w2g/internal/http/response"
 	"w2g/internal/source"
 )
@@ -62,8 +63,12 @@ func NewHandler(svc Service, l *slog.Logger) *handler {
 }
 
 func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
-	userID, _ := r.Context().Value("user_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+	userID := ctx.UserIDFromContext(r.Context())
+
+	//nolint:errcheck
+	//nolint:errcheck
+	defer r.Body.Close()
 
 	var req CreateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -72,7 +77,6 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	r.Body.Close()
 
 	if req.Name == "" {
 		response.WriteBadRequest(w, "name is required")
@@ -107,8 +111,8 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) Get(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
-	inviteCode := 	r.PathValue("invite_code")
+	requestID := ctx.RequestIDFromContext(r.Context())
+	inviteCode := r.PathValue("invite_code")
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -135,9 +139,9 @@ func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
-	userID, _ := r.Context().Value("user_id").(string)
-	inviteCode := 	r.PathValue("invite_code")
+	requestID := ctx.RequestIDFromContext(r.Context())
+	userID := ctx.UserIDFromContext(r.Context())
+	inviteCode := r.PathValue("invite_code")
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -166,9 +170,12 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) PatchSource(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
-	userID, _ := r.Context().Value("user_id").(string)
-	inviteCode := 	r.PathValue("invite_code")
+	requestID := ctx.RequestIDFromContext(r.Context())
+	userID := ctx.UserIDFromContext(r.Context())
+	inviteCode := r.PathValue("invite_code")
+
+	//nolint:errcheck
+	defer r.Body.Close()
 
 	room, err := h.service.GetByInviteCode(inviteCode)
 	if err != nil {
@@ -191,7 +198,6 @@ func (h *handler) PatchSource(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	r.Body.Close()
 
 	if err := h.service.PatchSource(inviteCode, userID, req.SourceID); err != nil {
 		if errors.Is(err, ErrSourceNotFound) {
@@ -207,5 +213,5 @@ func (h *handler) PatchSource(w http.ResponseWriter, r *http.Request) {
 
 	h.log.Info("source changed", "request_id", requestID, "room_id", room.ID, "source_id", req.SourceID)
 
-	response.WriteOK(w, PatchResponse{SourceID: req.SourceID})
+	response.WriteOK(w, PatchResponse(req))
 }

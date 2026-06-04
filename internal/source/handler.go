@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"w2g/internal/http/response"
+	"w2g/internal/utils/ctx"
 )
 
 type Service interface {
@@ -35,7 +36,7 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 }
 
 func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
 
 	sources, err := h.service.GetAll()
 	if err != nil {
@@ -50,7 +51,10 @@ func (h *handler) GetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) Add(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+
+	//nolint:errcheck
+	defer r.Body.Close()
 
 	var req AddRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -59,7 +63,6 @@ func (h *handler) Add(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	r.Body.Close()
 
 	if req.Name == "" || req.URL == "" {
 		response.WriteBadRequest(w, "name and url are required")

@@ -17,8 +17,7 @@ type testSessionStore struct {
 }
 
 type testRepo struct {
-	user *User
-	err  error
+	err   error
 	users []User
 }
 

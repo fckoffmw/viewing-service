@@ -4,14 +4,28 @@
 
 ```
 cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ middleware.Auth ──→ Routes
-                                                                               │
-                                                                               ├── WebSocket (/ws/*)
-                                                                               ├── Auth API (/auth/*)
-                                                                               ├── Health (/healthz)
-                                                                               └── API (/api/*)
+                                                                                │
+                                                                                ├── WebSocket (/ws/*)
+                                                                                ├── Auth API (/auth/*)
+                                                                                ├── Health (/healthz)
+                                                                                └── API (/api/*)
 ```
 
-Статика (HTML, CSS, JS) раздаётся через nginx.
+Статика (HTML, CSS, JS) раздаётся через nginx (production) или `cmd/web` (dev-прокси).
+
+## Taskfile
+
+Проект использует [Taskfile](https://taskfile.dev) для автоматизации:
+
+| Команда | Описание |
+|---------|----------|
+| `task run` | Тесты, линтер, сборка, запуск сервисов |
+| `task stop` | Остановка всех сервисов |
+| `task test` | Тесты |
+| `task lint` | Линтер |
+| `task build` | Сборка бинарников |
+
+Все сервисы запускаются через `nohup`, PID сохраняются в `.task/pids/`, логи в `.task/logs/`.
 
 ## Пакеты
 
@@ -23,18 +37,23 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 | `source` | Управление источниками видео (CRUD) |
 | `middleware` | HTTP middleware (logging, auth) |
 | `repo` | CSV хранилище (общая реализация) |
+| `http` | Настройка роутера |
 | `http/response` | Утилиты для JSON-ответов |
 | `apperrors` | Типизированные ошибки |
 | `config` | Конфигурация из .env |
+| `utils/ctx` | Контекст запроса (request_id, user_id) |
+| `utils/str` | Генерация invite-кодов |
 
 ## Middleware
 
 ### logging
+
 - Генерирует `request_id` (8 символов UUID)
 - Добавляет заголовок `X-Request-ID` в ответ
 - Логирует: method, path, status, duration
 
 ### auth
+
 - Пропускает публичные пути: `/auth/*`, `/healthz`, `/ws/*`, `/static/*`, `/`
 - Для защищённых маршрутов проверяет `session_id` cookie
 - Sliding expiry: обновляет `ExpiresAt` при каждом запросе
@@ -49,6 +68,7 @@ Client ──→ readPump ──→ hub.Incoming() ──→ handleEvent() ─�
 - HubManager — реестр RoomHub по invite_code
 - RoomHub — одна goroutine с select на register/unregister/incoming
 - Keepalive: ping/pong каждые 54с
+- Синхронизация: сервер — источник истины (play/pause/seek → broadcast всем)
 
 ## Хранение
 
@@ -92,6 +112,6 @@ CSV файлы в `STORAGE_DIR`:
 | Модуль | Версия | Назначение |
 |--------|--------|-----------|
 | `gorilla/websocket` | v1.5.3 | WebSocket |
-| `github.com/google/uuid` | v1.6.0 | UUID |
+| `google/uuid` | v1.6.0 | UUID |
 | `golang.org/x/crypto` | v0.35.0 | bcrypt |
 | `joho/godotenv` | v1.5.1 | .env загрузка |

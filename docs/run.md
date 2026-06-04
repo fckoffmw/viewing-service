@@ -1,9 +1,26 @@
 # Запуск
 
-## Локальный запуск
+## Разработка (Taskfile)
 
 ```bash
+# Запустить всё (тесты + линтер + сборка + сервис)
+task run
+
+# Остановить
+task stop
+```
+
+Сервис: `http://localhost:8080`
+Dev-прокси (статика + прокси API/WS): `http://localhost:8081`
+
+## Локальный запуск (без Taskfile)
+
+```bash
+# Backend
 go run ./cmd/w2g
+
+# Dev-прокси (опционально, для разработки фронта)
+go run ./cmd/web -dir ./web -backend http://localhost:8080
 ```
 
 Сервис доступен на `http://localhost:8080`
@@ -41,32 +58,18 @@ sudo ./deploy.sh \
 ### Управление сервисом
 
 ```bash
-# Статус
-systemctl status w2g
-
-# Логи
-journalctl -u w2g -f
-
-# Перезапуск
-sudo systemctl restart w2g
-
-# Остановка
-sudo systemctl stop w2g
+systemctl status w2g   # Статус
+journalctl -u w2g -f   # Логи
+sudo systemctl restart w2g  # Перезапуск
+sudo systemctl stop w2g     # Остановка
 ```
 
 ## Проверка
 
-Health endpoint:
 ```bash
 curl http://localhost:8080/healthz
 ```
 Ответ: `ok`
-
-## Остановка
-
-- Docker Compose: `docker compose down`
-- Go run: `Ctrl+C`
-- Systemd: `sudo systemctl stop w2g`
 
 ## Тесты
 

@@ -111,6 +111,7 @@ func (c *client) Send() chan outgoingMessage {
 	return c.send
 }
 
+//nolint:errcheck
 func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -123,8 +124,7 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 
 	for {
@@ -158,6 +158,7 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	}
 }
 
+//nolint:errcheck
 func (c *client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {

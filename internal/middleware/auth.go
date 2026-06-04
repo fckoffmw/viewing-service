@@ -1,15 +1,15 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
-	"w2g/internal/auth"
 
 	"w2g/internal/apperrors"
+	"w2g/internal/auth"
+	"w2g/internal/utils/ctx"
 )
 
 type Middleware func(http.Handler, ...any) http.Handler
@@ -17,6 +17,7 @@ type Middleware func(http.Handler, ...any) http.Handler
 func writeUnauthorized(w http.ResponseWriter, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
+	//nolint:errcheck
 	json.NewEncoder(w).Encode(apperrors.ErrorResponse{Error: msg})
 }
 
@@ -66,9 +67,8 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 		session.ExpiresAt = now.Add(auth.SessionExpiry)
 		sessionStore.Set(session)
 
-		requestID, _ := r.Context().Value("request_id").(string)
-		ctx := context.WithValue(r.Context(), "user_id", session.UserID)
-		r = r.WithContext(ctx)
+		requestID := ctx.RequestIDFromContext(r.Context())
+		r = r.WithContext(ctx.WithUserID(r.Context(), session.UserID))
 
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(sw, r)

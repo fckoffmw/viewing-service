@@ -18,14 +18,15 @@
 
 - Аутентификация: register, login, logout, /auth/me
 - REST API: sources, rooms (мультикомнаты)
-- WebSocket чат: /ws/{invite_code}
+- WebSocket чат и синхронизация: /ws/{invite_code}
+- Синхронизация просмотра (play/pause/seek)
 - Источники: CRUD через API
 - Комнаты: несколько комнат с invite-кодами
 
 ## Быстрый старт
 
 ```bash
-go run ./cmd/w2g
+task run
 ```
 
 Сервис доступен на `http://localhost:8080`

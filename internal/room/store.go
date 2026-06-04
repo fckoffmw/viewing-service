@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
-	"w2g/internal/strutils"
+	"w2g/internal/utils/str"
 )
 
 type store struct {
@@ -62,7 +62,7 @@ func (s *store) GetAll() []*Room {
 }
 
 func (s *store) Create(room *Room) error {
-	inviteCode, err := strutils.GenerateInviteCode()
+	inviteCode, err := str.GenerateInviteCode()
 	if err != nil {
 		return err
 	}
