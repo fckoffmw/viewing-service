@@ -50,6 +50,18 @@
   <script>
     var currentUserId = ''
     var currentUsername = ''
+    var container = document.getElementById('rooms-container');
+    var rooms = []
+
+    container.addEventListener('click', function(event) {
+      if (event.target.classList.contains('btn-delete-room')) {
+        var code = event.target.getAttribute('data-code');
+
+        if (code) {
+          deleteRoom(code);
+        }
+      }
+    });
 
     checkAuth()
 
@@ -80,7 +92,7 @@
       try {
         var res = await fetch('/api/rooms')
         if (!res.ok) { container.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
-        var rooms = await res.json()
+        rooms = await res.json()
         renderRooms(rooms)
       } catch {
         container.innerHTML = '<div class="empty">Ошибка соединения</div>'
@@ -107,7 +119,7 @@
             '</div>' +
             '<div class="room-actions">' +
               '<a href="/room.html?invite=' + r.invite_code + '" class="btn btn-primary btn-sm">Войти</a>' +
-              (isOwner ? '<button onclick="deleteRoom(\'' + r.invite_code + '\',\'' + esc(r.name) + '\')" class="btn btn-danger btn-sm">\u2715</button>' : '') +
+              (isOwner ? '<button data-code="' + esc(r.invite_code) + '" class="btn btn-danger btn-sm btn-delete-room">\u2715</button>' : '') +
             '</div>' +
           '</div>'
         )
@@ -118,6 +130,9 @@
       var d = document.createElement('div')
       d.textContent = s
       return d.innerHTML
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, '&#39;')
+        .replace(/"/g, '&quot;');
     }
 
     function copyInvite(code) {
@@ -176,10 +191,15 @@
     }
 
     // --- delete room ---
-    async function deleteRoom(code, name) {
-      if (!confirm('Удалить комнату "' + name + '"? Это действие нельзя отменить.')) return
+    async function deleteRoom(code) {
+      var delRoom = rooms.find(function (r) {
+        return r.invite_code === code
+      })
+
+      if (!confirm('Удалить комнату "' + delRoom.name + '"? Это действие нельзя отменить.')) return
+      
       try {
-        var res = await fetch('/api/rooms/' + code, { method: 'DELETE' })
+        var res = await fetch('/api/rooms/' + delRoom.invite_code, { method: 'DELETE' })
         if (res.ok) {
           loadRooms()
           showToast('Комната удалена')
