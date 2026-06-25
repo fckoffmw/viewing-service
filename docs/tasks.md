@@ -43,11 +43,11 @@
 
 #### index.html
 
-- [ ] убрать var контейнеры
-- [ ] переименовать глобальный var контейнер в roomContainer
-
+- [ ] пофиксить баг: при введении кода несуществующей комнаты в нее нельзя войти
 
 ### DONE
 
 - [x] `web/demo/` сохранён (player-api-demo.html) — не трогать.
 - [x] bug fix: deleteRoom btn on main page
+- [x] убрать var контейнеры
+- [x] переименовать глобальный var контейнер в roomContainer

@@ -50,10 +50,10 @@
   <script>
     var currentUserId = ''
     var currentUsername = ''
-    var container = document.getElementById('rooms-container');
+    var roomContainer = document.getElementById('rooms-container');
     var rooms = []
 
-    container.addEventListener('click', function(event) {
+    roomContainer.addEventListener('click', function(event) {
       if (event.target.classList.contains('btn-delete-room')) {
         var code = event.target.getAttribute('data-code');
 
@@ -86,28 +86,25 @@
 
     // --- rooms ---
     async function loadRooms() {
-      var container = document.getElementById('rooms-container')
-      container.innerHTML = '<div class="empty">Загрузка...</div>'
+      roomContainer.innerHTML = '<div class="empty">Загрузка...</div>'
 
       try {
         var res = await fetch('/api/rooms')
-        if (!res.ok) { container.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
+        if (!res.ok) { roomContainer.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
         rooms = await res.json()
         renderRooms(rooms)
       } catch {
-        container.innerHTML = '<div class="empty">Ошибка соединения</div>'
+        roomContainer.innerHTML = '<div class="empty">Ошибка соединения</div>'
       }
     }
 
     function renderRooms(rooms) {
-      var container = document.getElementById('rooms-container')
-
       if (rooms.length === 0) {
-        container.innerHTML = '<div class="empty">Нет комнат. Создайте первую.</div>'
+        roomContainer.innerHTML = '<div class="empty">Нет комнат. Создайте первую.</div>'
         return
       }
 
-      container.innerHTML = rooms.map(function (r) {
+      roomContainer.innerHTML = rooms.map(function (r) {
         var source = r.current_source ? r.current_source.name : '\u2014'
         var members = r.members_online || 0
         var isOwner = r.owner_id === currentUserId
