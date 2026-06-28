@@ -56,3 +56,4 @@
 - [x] bug fix: deleteRoom btn on main page
 - [x] убрать var контейнеры
 - [x] переименовать глобальный var контейнер в roomContainer
+- [x] весь js код в файлы
