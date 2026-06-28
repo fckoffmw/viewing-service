@@ -167,3 +167,62 @@ function showToast(msg) {
     document.body.appendChild(el)
     setTimeout(function () { el.style.opacity = '0'; setTimeout(function () { el.remove() }, 300) }, 2000)
 }
+
+var sakuraPetals = [];
+
+function createPetal() {
+    var petal = document.createElement('div')
+    petal.className = 'sakura'
+    
+    var size = 10 + Math.random() * 15
+    petal.style.width = size + 'px'
+    petal.style.height = size + 'px'
+    
+    var startX = Math.random() * window.innerWidth
+    petal.style.left = startX + 'px'
+    petal.style.top = '-30px' 
+    
+    petal.style.opacity = 0.6 + Math.random() * 0.4
+    
+    document.body.appendChild(petal)
+    
+    return {
+        element: petal,
+        x: startX,        
+        y: -30,          
+        speed: 1 + Math.random() * 2,  
+        amplitude: 20 + Math.random() * 30,  
+        phase: Math.random() * Math.PI * 2,  
+        rotation: 0,      
+        rotationSpeed: (Math.random() - 0.5) * 4
+    }
+}
+
+function animateSakura() {
+    if (Math.random() < 0.05) { 
+        sakuraPetals.push(createPetal())
+    }
+    
+    for (var i = sakuraPetals.length - 1; i >= 0; i--) {
+        var p = sakuraPetals[i]
+        
+        p.y += p.speed
+        
+        p.x += Math.sin(p.y * 0.02 + p.phase) * 0.5
+        
+        p.rotation += p.rotationSpeed
+
+        p.element.style.top = p.y + 'px'
+        p.element.style.left = p.x + 'px'
+        p.element.style.transform = 'rotate(' + p.rotation + 'deg)'
+        
+        if (p.y > window.innerHeight) {
+            p.element.remove()       
+            sakuraPetals.splice(i, 1) 
+        }
+    }
+
+    requestAnimationFrame(animateSakura)
+}
+
+animateSakura()
