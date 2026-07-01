@@ -1,0 +1,24 @@
+linters:
+  enable:
+    - errorlint
+    - errcheck
+
+linters-settings:
+  errorlint:
+    errorf: true
+    asserts: true
+    comparison: true
+  errcheck:
+    exclude-functions:
+      - (io.ReadCloser).Close
+      - (net/http.ResponseWriter).Write
+      - (*encoding/json.Encoder).Encode
+      - (*os.File).Close
+      - (net.Conn).Close
+      - (*net/http.Server).Shutdown
+      - (*github.com/gorilla/websocket.Conn).SetReadDeadline
+      - (*github.com/gorilla/websocket.Conn).SetWriteDeadline
+      - (*github.com/gorilla/websocket.Conn).WriteMessage
+      - (*bufio.Writer).Write
+      - (io.Writer).Write
+

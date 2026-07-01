@@ -111,7 +111,6 @@ func (c *client) Send() chan outgoingMessage {
 	return c.send
 }
 
-//nolint:errcheck
 func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -133,6 +132,7 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Debug("ws: unexpected close", "err", err)
 			}
+
 			break
 		}
 
@@ -142,7 +142,7 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 			continue
 		}
 
-		log.Info("ws message received",
+		log.Debug("ws message received",
 			"type", msg.Type,
 			"username", c.username,
 			"payload", string(msg.Payload),
@@ -158,7 +158,6 @@ func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	}
 }
 
-//nolint:errcheck
 func (c *client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {

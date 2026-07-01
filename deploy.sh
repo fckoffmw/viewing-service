@@ -18,6 +18,7 @@ STORAGE_DIR=""
 BIN_DIR=""
 CONF_DIR=""
 LOG_FILE=""
+WEB_DIR=""
 
 LOG_LEVEL=info
 
@@ -30,14 +31,44 @@ log() {
     echo "$msg" | tee -a "$DEPLOY_LOG"
 }
 
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS]
+
+Deploy w2g — build, install systemd unit, deploy web files.
+
+Options:
+  -h, --help                Show this help message
+  --deploy-root DIR         Root directory for build artifacts (default: \$HOME/w2g)
+  --default BOOL            System-wide deploy with presets (default: true)
+                              Sets PORT=8080, STORAGE_DIR=/var/lib/w2g,
+                              LOG_FILE=/var/log/w2g/w2g.log, CONF_DIR=/etc/w2g,
+                              BIN_DIR=/usr/bin, WEB_DIR=/var/www/w2g
+  --port PORT               HTTP port (default: 8080)
+  --storage DIR             Storage directory for CSV data
+  --log-level LEVEL         Log level: debug, info, warn, error (default: info)
+  --log-file FILE           Path to log file
+  --web-dir DIR             Target directory for web frontend files (e.g. /var/www/w2g)
+
+Examples:
+  $0                        Deploy with defaults (system-wide)
+  $0 --default false        Deploy to \$HOME/w2g (local)
+  $0 --web-dir /var/www/w2g --default false
+                            Deploy locally + copy web to custom path
+EOF
+    exit 0
+}
+
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -h|--help) usage ;;
         --deploy-root) DEPLOY_ROOT="$2"; shift 2 ;;
         --default) BASIC_DEPLOY="$2"; shift 2 ;;
         --port) PORT="$2"; shift 2 ;;
         --storage) STORAGE="$2"; shift 2 ;;
         --log-level) LOG_LEVEL="$2"; shift 2 ;;
         --log-file) LOG_FILE="$2"; shift 2 ;;
+        --web-dir) WEB_DIR="$2"; shift 2 ;;
         *) echo "Unknown: $1" >&2; exit 1 ;;
     esac
 done
@@ -50,12 +81,18 @@ if [[ "$BASIC_DEPLOY" == "true" ]]; then
     LOG_FILE="/var/log/$APP_NAME/w2g.log"
     CONF_DIR="/etc/$APP_NAME"
     BIN_DIR="/usr/bin"
+    WEB_DIR="/var/www/w2g"
 fi
 
 STORAGE_DIR="${STORAGE_DIR:-$DEPLOY_ROOT/storage}"
 LOG_FILE="${LOG_FILE:-$DEPLOY_ROOT/logs/w2g.log}"
 BIN_DIR="${BIN_DIR:-$DEPLOY_ROOT/bin}"
 CONF_DIR="${CONF_DIR:-$DEPLOY_ROOT/config}"
+
+if [[ -n "$WEB_DIR" ]] && [[ ! -d "web" ]]; then
+    log "ERROR: web/ directory not found (needed for --web-dir)"
+    exit 1
+fi
 
 # validation: check required paths and create if needed
 for dir in "$(dirname "$LOG_FILE")" "$STORAGE_DIR" "$CONF_DIR" "$BIN_DIR"; do
@@ -153,6 +190,26 @@ cp -f "$DEPLOY_ROOT/config/$APP_NAME.service" "/etc/systemd/system/$APP_NAME.ser
 cp -f "$DEPLOY_ROOT/config/.env" "$CONF_DIR"
 mkdir -p "$STORAGE_DIR"
 
+# deploy web
+log "Copying web files to artifacts ($DEPLOY_ROOT/web)..."
+mkdir -p "$DEPLOY_ROOT/web"
+cp -r web/* "$DEPLOY_ROOT/web"
+
+if [[ -n "$WEB_DIR" ]]; then
+    log "Copying web files to $WEB_DIR..."
+    mkdir -p "$WEB_DIR"
+    rm -rf "${WEB_DIR:?}/"*
+    cp -r web/* "$WEB_DIR"
+    log "Web files deployed to $WEB_DIR"
+fi
+
+# reload nginx
+if [[ -n "$WEB_DIR" ]] && systemctl is-active --quiet nginx; then
+    log "Reloading nginx..."
+    systemctl reload nginx
+    log "Nginx reloaded"
+fi
+
 log "Reloading systemd and restarting service..."
 systemctl daemon-reload
 systemctl restart $APP_NAME.service
@@ -163,7 +220,6 @@ log "Checking health..."
 curl -sf "http://localhost:$PORT/healthz" || { log "ERROR: health check failed"; exit 1; }
 log "Health check OK"
 
-# logs
 log "=== Last 10 lines of app log ==="
 tail -n 10 "$LOG_FILE" 2>/dev/null || log "Log file not found"
 

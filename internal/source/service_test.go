@@ -21,6 +21,37 @@ func (m *mockRepo) GetAllSources() ([]Source, error) {
 	return m.sources, nil
 }
 
+func (m *mockRepo) GetSourceByID(id string) (*Source, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+
+	for i := range m.sources {
+		if m.sources[i].ID == id {
+			return &m.sources[i], nil
+		}
+	}
+
+	return nil, nil
+}
+
+func (m *mockRepo) UpdateSource(s *Source) error {
+	if m.err != nil {
+		return m.err
+	}
+
+	for i := range m.sources {
+		if m.sources[i].ID == s.ID {
+			m.sources[i].Name = s.Name
+			m.sources[i].URL = s.URL
+
+			return nil
+		}
+	}
+
+	return errRepo
+}
+
 func (m *mockRepo) AddSource(s *Source) (string, error) {
 	if m.err != nil {
 		return "", m.err
@@ -30,6 +61,22 @@ func (m *mockRepo) AddSource(s *Source) (string, error) {
 	s.ID = id
 	m.sources = append(m.sources, *s)
 	return id, nil
+}
+
+func (m *mockRepo) DeleteSource(id string) error {
+	if m.err != nil {
+		return m.err
+	}
+
+	for i := range m.sources {
+		if m.sources[i].ID == id {
+			m.sources = append(m.sources[:i], m.sources[i+1:]...)
+
+			return nil
+		}
+	}
+
+	return errRepo
 }
 
 func TestServiceGetAll(t *testing.T) {
@@ -157,6 +204,117 @@ func TestServiceAdd(t *testing.T) {
 			}
 			if len(repo.sources) != len(tt.sources)+1 {
 				t.Errorf("sources len = %d, want %d", len(repo.sources), len(tt.sources)+1)
+			}
+		})
+	}
+}
+
+func TestServiceUpdate(t *testing.T) {
+	tests := []struct {
+		name     string
+		sources  []Source
+		updateID string
+		newName  string
+		newURL   string
+		mockErr  error
+		wantErr  bool
+		wantName string
+	}{
+		{
+			name:     "success",
+			sources:  []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
+			updateID: "1",
+			newName:  "Updated Film",
+			newURL:   "http://vk.com/new",
+			wantErr:  false,
+			wantName: "Updated Film",
+		},
+		{
+			name:     "not found",
+			sources:  []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
+			updateID: "999",
+			newName:  "Updated",
+			newURL:   "http://vk.com/new",
+			wantErr:  true,
+		},
+		{
+			name:     "repo error",
+			sources:  []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
+			updateID: "1",
+			newName:  "Updated",
+			newURL:   "http://vk.com/new",
+			mockErr:  errRepo,
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepo{sources: tt.sources, err: tt.mockErr}
+			svc := NewService(repo)
+
+			err := svc.Update(tt.updateID, tt.newName, tt.newURL)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(repo.sources) > 0 && repo.sources[0].Name != tt.wantName {
+				t.Errorf("source.Name = %q, want %q", repo.sources[0].Name, tt.wantName)
+			}
+		})
+	}
+}
+
+func TestServiceDelete(t *testing.T) {
+	tests := []struct {
+		name      string
+		sources   []Source
+		deleteID  string
+		wantErr   error
+		wantLen   int
+	}{
+		{
+			name:     "success",
+			sources:  []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
+			deleteID: "1",
+			wantErr:  nil,
+			wantLen:  0,
+		},
+		{
+			name:     "repo error",
+			sources:  []Source{{ID: "1", Name: "Film", URL: "http://vk.com/1"}},
+			deleteID: "999",
+			wantErr:  errRepo,
+			wantLen:  1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockRepo{sources: tt.sources, err: tt.wantErr}
+			svc := NewService(repo)
+
+			err := svc.Delete(tt.deleteID)
+
+			if tt.wantErr != nil {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(repo.sources) != tt.wantLen {
+				t.Errorf("sources len = %d, want %d", len(repo.sources), tt.wantLen)
 			}
 		})
 	}

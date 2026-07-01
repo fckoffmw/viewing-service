@@ -130,6 +130,46 @@
 
 ---
 
+### PATCH /api/sources/{id}
+
+Обновить источник. Требует `session_id` cookie.
+
+**Request:**
+```json
+{"name": "Новое название", "url": "https://..."}
+```
+
+**Response 200:**
+```json
+{"id": "1"}
+```
+
+**Response 400:**
+```json
+{"error": "cannot read req body"}
+{"error": "name and url are required"}
+```
+
+**Response 500:**
+```json
+{"error": "cannot update source"}
+```
+
+---
+
+### DELETE /api/sources/{id}
+
+Удалить источник. Требует `session_id` cookie.
+
+**Response 200:** пустое тело (`{}`)
+
+**Response 500:**
+```json
+{"error": "cannot delete source"}
+```
+
+---
+
 ## Комнаты
 
 ### POST /api/rooms
@@ -221,10 +261,7 @@
 
 Удалить комнату. Только owner. Требует `session_id` cookie.
 
-**Response 200:**
-```json
-{"status": "deleted"}
-```
+**Response 200:** пустое тело (`{}`)
 
 **Response 403:**
 ```json
@@ -334,5 +371,5 @@
 - `username` заполнен для `chat`, `play`, `pause`, `seek`; отсутствует для `sync` и `source_changed`.
 - `chat` не идёт отправителю (остальные — всем).
 - Чат: текст обрезается до 1000 символов.
-- `source_changed` приходит через HTTP PATCH и проксируется в WS (отправитель не указан).
+- `source_changed` приходит через `PATCH /api/rooms/{invite_code}/source` и проксируется в WS (отправитель не указан).
 - `play`, `pause`, `seek` доступны любому аутентифицированному участнику комнаты.

@@ -21,6 +21,7 @@ func UserIDFromContext(ctx context.Context) string {
 	if v, ok := ctx.Value(keyUserID).(string); ok {
 		return v
 	}
+
 	return ""
 }
 
@@ -32,5 +33,6 @@ func RequestIDFromContext(ctx context.Context) string {
 	if v, ok := ctx.Value(keyRequestID).(string); ok {
 		return v
 	}
+
 	return ""
 }

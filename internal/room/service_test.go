@@ -2,7 +2,6 @@ package room
 
 import (
 	"errors"
-	"log/slog"
 	"testing"
 
 	"w2g/internal/source"
@@ -144,7 +143,7 @@ func TestServiceCreate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRoomRepo{count: tt.count}
-			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, &mockHubManager{}, tt.maxRoomsPerUser)
+			svc := NewService(repo, &mockSourceGetter{}, &mockHubManager{}, tt.maxRoomsPerUser)
 
 			resp, err := svc.Create(CreateRequest{Name: tt.roomName}, tt.ownerID)
 
@@ -190,7 +189,7 @@ func TestServiceGetByInviteCode(t *testing.T) {
 			repo := &mockRoomRepo{
 				rooms: []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 			}
-			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, &mockHubManager{}, 10)
+			svc := NewService(repo, &mockSourceGetter{}, &mockHubManager{}, 10)
 
 			resp, err := svc.GetByInviteCode(tt.inviteCode)
 
@@ -215,7 +214,7 @@ func TestServiceGetByInviteCodeWithSource(t *testing.T) {
 		rooms: []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 	}
 	srcGetter := &mockSourceGetter{src: &source.Source{ID: "s1", Name: "Test Video", URL: "http://example.com"}}
-	svc := NewService(slog.Default(), repo, srcGetter, &mockHubManager{}, 10)
+	svc := NewService(repo, srcGetter, &mockHubManager{}, 10)
 
 	setCurrentSourceIDForTest(svc, "1", "s1")
 
@@ -278,7 +277,7 @@ func TestServiceDelete(t *testing.T) {
 				rooms:     []*Room{{ID: "1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 				deleteErr: tt.deleteErr,
 			}
-			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, &mockHubManager{}, 10)
+			svc := NewService(repo, &mockSourceGetter{}, &mockHubManager{}, 10)
 
 			err := svc.Delete(tt.inviteCode, tt.userID)
 
@@ -326,7 +325,7 @@ func TestServiceGetAll(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockRoomRepo{rooms: tt.rooms}
 			hub := &mockHubManager{members: tt.members}
-			svc := NewService(slog.Default(), repo, &mockSourceGetter{}, hub, 10)
+			svc := NewService(repo, &mockSourceGetter{}, hub, 10)
 
 			result := svc.GetAll()
 
@@ -346,7 +345,7 @@ func TestServicePatchSource(t *testing.T) {
 	}
 	hub := &mockHubManager{}
 	srcGetter := &mockSourceGetter{src: &source.Source{ID: "s1", Name: "Test", URL: "http://example.com"}}
-	svc := NewService(slog.Default(), repo, srcGetter, hub, 10)
+	svc := NewService(repo, srcGetter, hub, 10)
 
 	err := svc.PatchSource("ABCD1234", "user1", "s1")
 	if err != nil {
@@ -362,10 +361,10 @@ func TestServicePatchSourceNotOwner(t *testing.T) {
 	repo := &mockRoomRepo{
 		rooms: []*Room{{ID: "1", Name: "Room1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 	}
-	svc := NewService(slog.Default(), repo, &mockSourceGetter{}, &mockHubManager{}, 10)
+	svc := NewService(repo, &mockSourceGetter{}, &mockHubManager{}, 10)
 
 	err := svc.PatchSource("ABCD1234", "user2", "s1")
-	if err != ErrNotOwner {
+	if !errors.Is(err, ErrNotOwner) {
 		t.Errorf("expected ErrNotOwner, got %v", err)
 	}
 }
@@ -374,16 +373,16 @@ func TestServicePatchSourceNotFound(t *testing.T) {
 	repo := &mockRoomRepo{
 		rooms: []*Room{{ID: "1", Name: "Room1", InviteCode: "ABCD1234", OwnerID: "user1"}},
 	}
-	svc := NewService(slog.Default(), repo, &mockSourceGetter{err: errors.New("not found")}, &mockHubManager{}, 10)
+	svc := NewService(repo, &mockSourceGetter{err: errors.New("not found")}, &mockHubManager{}, 10)
 
 	err := svc.PatchSource("ABCD1234", "user1", "s1")
-	if err != ErrSourceNotFound {
+	if !errors.Is(err, ErrSourceNotFound) {
 		t.Errorf("expected ErrSourceNotFound, got %v", err)
 	}
 }
 
 func TestServiceCurrentSourceID(t *testing.T) {
-	svc := NewService(slog.Default(), &mockRoomRepo{}, &mockSourceGetter{}, &mockHubManager{}, 10)
+	svc := NewService(&mockRoomRepo{}, &mockSourceGetter{}, &mockHubManager{}, 10)
 
 	setCurrentSourceIDForTest(svc, "room1", "source1")
 	setCurrentSourceIDForTest(svc, "room2", "source2")

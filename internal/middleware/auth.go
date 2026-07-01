@@ -17,7 +17,6 @@ type Middleware func(http.Handler, ...any) http.Handler
 func writeUnauthorized(w http.ResponseWriter, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusUnauthorized)
-	//nolint:errcheck
 	json.NewEncoder(w).Encode(apperrors.ErrorResponse{Error: msg})
 }
 
@@ -43,22 +42,28 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 		}
 		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/demo/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 		if publicPaths[r.URL.Path] {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
+			log.Warn("unauthorized", "reason", "no session cookie")
 			writeUnauthorized(w, "session not found")
+
 			return
 		}
 
 		session, ok := sessionStore.Get(cookie.Value)
 		if !ok {
+			log.Warn("unauthorized", "reason", "invalid session")
 			writeUnauthorized(w, "session not found")
+
 			return
 		}
 
@@ -67,18 +72,8 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 		session.ExpiresAt = now.Add(auth.SessionExpiry)
 		sessionStore.Set(session)
 
-		requestID := ctx.RequestIDFromContext(r.Context())
 		r = r.WithContext(ctx.WithUserID(r.Context(), session.UserID))
 
-		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(sw, r)
-
-		log.Info("request",
-			"user_id", session.UserID,
-			"request_id", requestID,
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", sw.status,
-		)
+		next.ServeHTTP(w, r)
 	})
 }

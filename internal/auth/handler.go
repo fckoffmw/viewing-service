@@ -38,27 +38,29 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 	requestID := ctx.RequestIDFromContext(r.Context())
 
-	//nolint:errcheck
 	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
-		h.log.Error("when reading req body", "request_id", requestID, "err", err)
+		h.log.Warn("when reading req body", "request_id", requestID, "err", err)
 		response.WriteBadRequest(w, "cannot read req body")
+
 		return
 	}
 
 	sessionID, err := h.service.Login(creds.Username, creds.Password)
 	if err != nil {
-		h.log.Error("when login", "request_id", requestID, "err", err)
-
 		var appErr *apperrors.Error
 		if errors.As(err, &appErr) {
+			h.log.Warn("when login", "request_id", requestID, "err", err)
 			response.WriteError(w, appErr.Code, appErr.Message)
+
 			return
 		}
 
+		h.log.Error("when login", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "internal server error")
+
 		return
 	}
 
@@ -71,27 +73,29 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *handler) Register(w http.ResponseWriter, r *http.Request) {
 	requestID := ctx.RequestIDFromContext(r.Context())
 
-	//nolint:errcheck
 	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
-		h.log.Error("when reading req body", "request_id", requestID, "err", err)
+		h.log.Warn("when reading req body", "request_id", requestID, "err", err)
 		response.WriteBadRequest(w, "cannot read req body")
+
 		return
 	}
 
 	sessionID, err := h.service.Register(creds.Username, creds.Password)
 	if err != nil {
-		h.log.Error("when register", "request_id", requestID, "err", err)
-
 		var appErr *apperrors.Error
 		if errors.As(err, &appErr) {
+			h.log.Warn("when register", "request_id", requestID, "err", err)
 			response.WriteError(w, appErr.Code, appErr.Message)
+
 			return
 		}
 
+		h.log.Error("when register", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "internal server error")
+
 		return
 	}
 

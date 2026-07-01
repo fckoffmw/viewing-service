@@ -12,14 +12,12 @@ type ErrorResponse struct {
 func WriteError(w http.ResponseWriter, code int, err string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	//nolint:errcheck
 	json.NewEncoder(w).Encode(ErrorResponse{Error: err})
 }
 
 func WriteJSON(w http.ResponseWriter, code int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	//nolint:errcheck
 	json.NewEncoder(w).Encode(data)
 }
 

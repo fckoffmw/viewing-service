@@ -19,6 +19,8 @@ type authHandler interface {
 type sourceHandler interface {
 	GetAll(w http.ResponseWriter, r *http.Request)
 	Add(w http.ResponseWriter, r *http.Request)
+	Patch(w http.ResponseWriter, r *http.Request)
+	Delete(w http.ResponseWriter, r *http.Request)
 }
 
 type roomHandler interface {
@@ -49,7 +51,7 @@ func NewRouter(
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
+		w.Write([]byte("ok"))
 	})
 
 	mux.HandleFunc("POST /auth/login", authHandler.Login)
@@ -59,6 +61,8 @@ func NewRouter(
 
 	mux.HandleFunc("GET /api/sources", sourceHandler.GetAll)
 	mux.HandleFunc("POST /api/sources", sourceHandler.Add)
+	mux.HandleFunc("PATCH /api/sources/{id}", sourceHandler.Patch)
+	mux.HandleFunc("DELETE /api/sources/{id}", sourceHandler.Delete)
 
 	mux.HandleFunc("POST /api/rooms", roomHandler.Create)
 	mux.HandleFunc("GET /api/rooms", roomHandler.GetAll)

@@ -2,7 +2,6 @@ package room
 
 import (
 	"errors"
-	"log/slog"
 	"testing"
 )
 
@@ -78,7 +77,7 @@ func TestNewStore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			csv := &mockCSVStorage{rooms: tt.rooms, getErr: tt.err}
-			store, err := NewStore(slog.Default(), csv)
+			store, err := NewStore(csv)
 
 			if tt.err != nil {
 				if err == nil {

@@ -12,9 +12,9 @@ tasks:
       - task --list
 
   test:
-    desc: "Run tests"
+    desc: "Run tests with coverage"
     cmds:
-      - go test ./...
+      - go test ./... -cover -count=1
 
   lint:
     desc: "Run linters"

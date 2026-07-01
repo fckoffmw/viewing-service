@@ -2,13 +2,12 @@ package room
 
 import (
 	"fmt"
-	"log/slog"
 	"sync"
+
 	"w2g/internal/utils/str"
 )
 
 type store struct {
-	log     *slog.Logger
 	rooms   map[string]*Room
 	storage Storage
 	mu      sync.RWMutex
@@ -21,19 +20,16 @@ type Storage interface {
 	DeleteRoom(id string) error
 }
 
-func NewStore(log *slog.Logger, storage Storage) (*store, error) {
+func NewStore(storage Storage) (*store, error) {
 	s := &store{
-		log:     log,
 		rooms:   make(map[string]*Room),
 		storage: storage,
 	}
 
 	if err := s.loadFromCSV(); err != nil {
-		log.Error("failed to load rooms from storage", "err", err)
 		return nil, fmt.Errorf("load rooms from storage: %w", err)
 	}
 
-	log.Info("room store initialized", "rooms_count", len(s.rooms))
 	return s, nil
 }
 
@@ -58,19 +54,20 @@ func (s *store) GetAll() []*Room {
 	for _, room := range s.rooms {
 		result = append(result, room)
 	}
+
 	return result
 }
 
 func (s *store) Create(room *Room) error {
 	inviteCode, err := str.GenerateInviteCode()
 	if err != nil {
-		return err
+		return fmt.Errorf("generate invite code: %w", err)
 	}
 	room.InviteCode = inviteCode
 
 	id, err := s.storage.AddRoom(room)
 	if err != nil {
-		return err
+		return fmt.Errorf("add room to storage: %w", err)
 	}
 
 	room.ID = id
@@ -87,6 +84,7 @@ func (s *store) GetByInviteCode(inviteCode string) (*Room, error) {
 	if !ok {
 		return nil, fmt.Errorf("room not found")
 	}
+
 	return room, nil
 }
 
@@ -99,6 +97,7 @@ func (s *store) GetByID(id string) (*Room, error) {
 			return room, nil
 		}
 	}
+
 	return nil, fmt.Errorf("room not found")
 }
 
@@ -112,6 +111,7 @@ func (s *store) GetByOwnerID(ownerID string) ([]*Room, error) {
 			rooms = append(rooms, room)
 		}
 	}
+
 	return rooms, nil
 }
 
@@ -126,7 +126,11 @@ func (s *store) Delete(inviteCode string) error {
 
 	delete(s.rooms, inviteCode)
 
-	return s.storage.DeleteRoom(room.ID)
+	if err := s.storage.DeleteRoom(room.ID); err != nil {
+		return fmt.Errorf("delete room from storage: %w", err)
+	}
+
+	return nil
 }
 
 func (s *store) CountByOwnerID(ownerID string) int {
@@ -139,5 +143,6 @@ func (s *store) CountByOwnerID(ownerID string) int {
 			count++
 		}
 	}
+
 	return count
 }

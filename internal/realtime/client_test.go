@@ -98,7 +98,6 @@ func TestServeWS_WebSocketUpgrade(t *testing.T) {
 		t.Fatalf("failed to connect: %v", err)
 	}
 
-	//nolint:errcheck
 	conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	_, msg, err := conn.ReadMessage()
 	if err != nil {
@@ -113,7 +112,6 @@ func TestServeWS_WebSocketUpgrade(t *testing.T) {
 		t.Errorf("expected sync, got %s", sync.Type)
 	}
 
-	//nolint:errcheck
 	conn.Close()
 	h.Close()
 }

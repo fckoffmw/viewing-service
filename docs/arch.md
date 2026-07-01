@@ -101,6 +101,8 @@ CSV файлы в `STORAGE_DIR`:
 |-------|------|-----------|
 | GET | `/api/sources` | source.GetAll |
 | POST | `/api/sources` | source.Add |
+| PATCH | `/api/sources/{id}` | source.Patch |
+| DELETE | `/api/sources/{id}` | source.Delete |
 | POST | `/api/rooms` | room.Create |
 | GET | `/api/rooms` | room.GetAll |
 | GET | `/api/rooms/{invite_code}` | room.Get |
@@ -113,5 +115,5 @@ CSV файлы в `STORAGE_DIR`:
 |--------|--------|-----------|
 | `gorilla/websocket` | v1.5.3 | WebSocket |
 | `google/uuid` | v1.6.0 | UUID |
-| `golang.org/x/crypto` | v0.35.0 | bcrypt |
+| `golang.org/x/crypto` | v0.51.0 | bcrypt |
 | `joho/godotenv` | v1.5.1 | .env загрузка |

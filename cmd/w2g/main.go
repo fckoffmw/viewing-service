@@ -34,7 +34,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	roomStore, err := room.NewStore(log, csvStorage)
+	roomStore, err := room.NewStore(csvStorage)
 	if err != nil {
 		log.Error("when creating room store", "error", err)
 		os.Exit(1)
@@ -52,7 +52,7 @@ func main() {
 	authHandler := auth.NewHandler(authService, log)
 
 	roomHubManager := realtime.NewHubManager(log)
-	roomService := room.NewService(log, roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
+	roomService := room.NewService(roomStore, csvStorage, roomHubManager, config.MaxRoomsPerUser)
 	roomHandler := room.NewHandler(roomService, log)
 
 	r := router.NewRouter(log, authService, authHandler, sourceHandler, roomHandler, roomHubManager)
@@ -84,7 +84,6 @@ func main() {
 	defer cancel()
 
 	log.Info("stopping HTTP server...")
-	//nolint:errcheck
 	server.Shutdown(ctx)
 
 	log.Info("stopping session cleanup...")

@@ -11,11 +11,10 @@ ws://localhost:8080/ws/{invite_code}
 ## Входящие сообщения (клиент → сервер)
 
 ```json
-{ "type": "play",            "payload": { "position": 42.5 } }
-{ "type": "pause",           "payload": { "position": 42.5 } }
-{ "type": "seek",            "payload": { "position": 120.0 } }
-{ "type": "source_changed",  "payload": { "source_id": "1", "source_url": "https://..." } }
-{ "type": "chat",            "payload": { "text": "hello" } }
+{ "type": "play",  "payload": { "position": 42.5 } }
+{ "type": "pause", "payload": { "position": 42.5 } }
+{ "type": "seek",  "payload": { "position": 120.0 } }
+{ "type": "chat",  "payload": { "text": "hello" } }
 ```
 
 | type | Payload | Описание |
@@ -23,7 +22,6 @@ ws://localhost:8080/ws/{invite_code}
 | `play` | `{ "position": float }` | Запуск видео с позиции |
 | `pause` | `{ "position": float }` | Пауза на позиции |
 | `seek` | `{ "position": float }` | Перемотка на позицию |
-| `source_changed` | `{ "source_id": string, "source_url": string }` | Смена источника (через HTTP PATCH /api/rooms/{code}/source) |
 | `chat` | `{ "text": string }` | Чат-сообщение (макс 1000 символов) |
 
 ## Исходящие сообщения (сервер → клиент)
@@ -74,6 +72,10 @@ ws://localhost:8080/ws/{invite_code}
 | POST | `/auth/register` | Регистрация + session_id |
 | POST | `/auth/login` | Логин + session_id |
 | GET | `/auth/me` | Текущий пользователь |
+| GET | `/api/sources` | Список источников |
+| POST | `/api/sources` | Добавить источник |
+| PATCH | `/api/sources/{id}` | Обновить источник |
+| DELETE | `/api/sources/{id}` | Удалить источник |
 | POST | `/api/rooms` | Создать комнату |
 | GET | `/api/rooms` | Список комнат |
 | GET | `/api/rooms/{invite_code}` | Детали комнаты |

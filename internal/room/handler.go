@@ -50,6 +50,8 @@ type PatchResponse struct {
 	SourceID string `json:"source_id"`
 }
 
+type DeleteResponse struct{}
+
 type handler struct {
 	service Service
 	log     *slog.Logger
@@ -66,8 +68,6 @@ func (h *handler) Create(w http.ResponseWriter, r *http.Request) {
 	requestID := ctx.RequestIDFromContext(r.Context())
 	userID := ctx.UserIDFromContext(r.Context())
 
-	//nolint:errcheck
-	//nolint:errcheck
 	defer r.Body.Close()
 
 	var req CreateRequest
@@ -166,7 +166,7 @@ func (h *handler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	h.log.Info("room deleted", "request_id", requestID, "room_id", room.ID)
 
-	response.WriteOK(w, map[string]string{"status": "deleted"})
+	response.WriteOK(w, DeleteResponse{})
 }
 
 func (h *handler) PatchSource(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +174,6 @@ func (h *handler) PatchSource(w http.ResponseWriter, r *http.Request) {
 	userID := ctx.UserIDFromContext(r.Context())
 	inviteCode := r.PathValue("invite_code")
 
-	//nolint:errcheck
 	defer r.Body.Close()
 
 	room, err := h.service.GetByInviteCode(inviteCode)

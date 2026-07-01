@@ -98,7 +98,6 @@ func NewCSVStorage(path string) (*csvStorage, error) {
 			return nil, fmt.Errorf("when writing to %s: %w", unit.filename, err)
 		}
 
-		//nolint:errcheck
 		file.Close()
 	}
 
@@ -194,7 +193,6 @@ func (s *csvStorage) AddSource(source *source.Source) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
@@ -216,6 +214,48 @@ func (s *csvStorage) AddSource(source *source.Source) (string, error) {
 	return id, nil
 }
 
+func (s *csvStorage) UpdateSource(src *source.Source) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[sourcesTable].filename
+
+	records, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return err
+	}
+
+	for i, record := range records {
+		if i > 0 && len(record) > 0 && record[0] == src.ID {
+			records[i] = []string{src.ID, src.Name, src.URL}
+			break
+		}
+	}
+
+	return writeAllToFile(s.basePath+filename, records)
+}
+
+func (s *csvStorage) DeleteSource(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	filename := s.dataStruct[sourcesTable].filename
+
+	records, err := readAllFromFile(s.basePath + filename)
+	if err != nil {
+		return err
+	}
+
+	var newRecords [][]string
+	for i, record := range records {
+		if i == 0 || (len(record) > 0 && record[0] != id) {
+			newRecords = append(newRecords, record)
+		}
+	}
+
+	return writeAllToFile(s.basePath+filename, newRecords)
+}
+
 func (s *csvStorage) AddUser(user *auth.User) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -224,7 +264,6 @@ func (s *csvStorage) AddUser(user *auth.User) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)
@@ -247,7 +286,7 @@ func (s *csvStorage) AddUser(user *auth.User) (string, error) {
 		return "", err
 	}
 
-	s.dataStruct[usersTable].lastID += 1
+	s.dataStruct[usersTable].lastID++
 
 	return id, nil
 }
@@ -359,7 +398,6 @@ func (s *csvStorage) getNewUserID() string {
 	return strconv.Itoa(s.dataStruct[usersTable].lastID + 1)
 }
 
-//nolint:errcheck
 func readAllFromFile(path string) ([][]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -375,7 +413,6 @@ func writeAllToFile(path string, records [][]string) error {
 	if err != nil {
 		return fmt.Errorf("when create file %s: %w", path, err)
 	}
-	//nolint:errcheck
 	defer file.Close()
 
 	writer := csv.NewWriter(file)

@@ -127,7 +127,7 @@ func (h *hub) Run() {
 }
 
 func (h *hub) handleEvent(evt incomingEvent) {
-	h.log.Info("event received",
+	h.log.Debug("event received",
 		"type", evt.Message.Type,
 		"username", evt.Username,
 		"payload", string(evt.Message.Payload),
@@ -174,7 +174,7 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		shouldShutdown := len(h.clients) == 0
 		h.mu.Unlock()
 
-		h.log.Info("chat broadcast done", "clients_remaining", len(h.clients))
+		h.log.Debug("chat broadcast done", "clients_remaining", len(h.clients))
 
 		if shouldShutdown {
 			h.shutdownOnEmpty()
@@ -192,7 +192,7 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.applyPlayerEvent(true, payload.Position)
 		h.mu.Unlock()
 
-		h.log.Info("player state after play", "playing", h.getState().Playing, "position", h.getState().Position)
+		h.log.Debug("player state after play", "playing", h.getState().Playing, "position", h.getState().Position)
 
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypePlay,
@@ -212,7 +212,7 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.applyPlayerEvent(false, payload.Position)
 		h.mu.Unlock()
 
-		h.log.Info("player state after pause", "playing", h.getState().Playing, "position", h.getState().Position)
+		h.log.Debug("player state after pause", "playing", h.getState().Playing, "position", h.getState().Position)
 
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypePause,
@@ -236,7 +236,7 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.state.UpdatedAt = time.Now()
 		h.mu.Unlock()
 
-		h.log.Info("player state after seek", "playing", h.getState().Playing, "position", h.getState().Position)
+		h.log.Debug("player state after seek", "playing", h.getState().Playing, "position", h.getState().Position)
 
 		h.broadcastAll(outgoingMessage{
 			Type:     MsgTypeSeek,
@@ -256,7 +256,7 @@ func (h *hub) handleEvent(evt incomingEvent) {
 		h.applySourceEvent(payload.SourceID, payload.SourceURL)
 		h.mu.Unlock()
 
-		h.log.Info("player state after source_changed", "source_id", payload.SourceID, "source_url", payload.SourceURL)
+		h.log.Debug("player state after source_changed", "source_id", payload.SourceID, "source_url", payload.SourceURL)
 
 		h.broadcastAll(outgoingMessage{
 			Type:    MsgTypeSourceChanged,
@@ -281,7 +281,7 @@ func (h *hub) broadcastAll(msg outgoingMessage) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h.log.Info("broadcasting",
+	h.log.Debug("broadcasting",
 		"type", msg.Type,
 		"username", msg.Username,
 		"clients", len(h.clients),
@@ -297,7 +297,7 @@ func (h *hub) broadcastAll(msg outgoingMessage) {
 		}
 	}
 
-	h.log.Info("broadcast done", "type", msg.Type, "clients_after", len(h.clients))
+	h.log.Debug("broadcast done", "type", msg.Type, "clients_after", len(h.clients))
 }
 
 func (h *hub) Close() {

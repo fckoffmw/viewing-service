@@ -51,6 +51,7 @@ func main() {
 			log.Printf("%s %s -> proxy", r.Method, path)
 			proxy.ServeHTTP(w, r)
 			log.Printf("  -> proxied in %v", time.Since(start))
+
 			return
 		}
 
