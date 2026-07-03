@@ -131,10 +131,20 @@ async function handleCreate(e) {
 }
 
 // --- join ---
-function joinByCode() {
+async function joinByCode() {
     var code = document.getElementById('join-code').value.trim().toUpperCase()
     if (!code) return
-    window.location.href = '/room.html?invite=' + code
+
+    try {
+        var res = await fetch('/api/rooms/' + code, { method: 'GET' })
+        if (res.ok) {
+            window.location.href = '/room.html?invite=' + code
+        } else {
+            showToast('Нет такой комнаты')
+        }
+    } catch {
+        alert('Ошибка соединения')
+    }
 }
 
 // --- delete room ---
@@ -146,16 +156,16 @@ async function deleteRoom(code) {
     if (!confirm('Удалить комнату "' + delRoom.name + '"? Это действие нельзя отменить.')) return
     
     try {
-    var res = await fetch('/api/rooms/' + delRoom.invite_code, { method: 'DELETE' })
-    if (res.ok) {
-        loadRooms()
-        showToast('Комната удалена')
-    } else {
-        var data = await res.json()
-        alert(data.error || 'Ошибка удаления')
-    }
+        var res = await fetch('/api/rooms/' + delRoom.invite_code, { method: 'DELETE' })
+        if (res.ok) {
+            loadRooms()
+            showToast('Комната удалена')
+        } else {
+            var data = await res.json()
+            alert(data.error || 'Ошибка удаления')
+        }
     } catch {
-    alert('Ошибка соединения')
+        alert('Ошибка соединения')
     }
 }
 
