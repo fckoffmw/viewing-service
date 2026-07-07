@@ -5,6 +5,15 @@ var roomOwnerId = "";
 var ws = null;
 var reconnectTimer = null;
 
+window.addEventListener("beforeunload", function () {
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+
+  if (ws){
+    ws.onclose = null
+    ws.close()
+  }
+})
+
 async function checkAuth() {
   try {
     var res = await fetch("/auth/me");
