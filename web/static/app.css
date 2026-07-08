@@ -5,13 +5,14 @@
 }
 
 html, body {
-  min-height: 100vh;
+  min-height: 0;
+  height: auto;
 }
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #0d0d0d;
-  color: #e5e5e5;
+  color: #fce4ec;
   position: relative;
   zoom: 1.33;
 }
@@ -20,8 +21,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: url("/static/img/wall.jpg") center / cover no-repeat;
-  opacity: 0.1;
+  background: url('/static/img/wall.png');
   z-index: -1;
   pointer-events: none;
 }
@@ -147,25 +147,25 @@ body::before {
 }
 
 .nav-logo {
-  color: #e5e5e5;
+  color: #ff80ab;
   font-size: 18px;
   font-weight: 600;
   text-decoration: none;
 }
 
 .nav-link {
-  color: #888;
+  color: #880e4f;
   font-size: 14px;
   text-decoration: none;
   transition: color 0.15s;
 }
 
 .nav-link:hover {
-  color: #e5e5e5;
+  color: #ff80ab;
 }
 
 .nav-link.active {
-  color: #e5e5e5;
+  color: #ff80ab;
 }
 
 .nav-right {
@@ -175,7 +175,7 @@ body::before {
 }
 
 .nav-username {
-  color: #666;
+  color: #880e4f;
   font-size: 14px;
 }
 
@@ -184,7 +184,8 @@ body::before {
   max-width: 700px;
   margin: 16px auto;
   padding: 32px 24px;
-  background: rgba(0,0,0,0.7);
+  background: linear-gradient(135deg, rgba(26,10,20,0.7) 0%, rgba(45,26,36,0.7) 100%);
+  border: 1px solid #880e4f;
   border-radius: 12px;
 }
 
@@ -217,22 +218,23 @@ body::before {
 }
 
 .btn-primary {
-  background: #e5e5e5;
-  color: #0d0d0d;
+  background: #ff80ab;
+  color: #1a0a14;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #d4d4d4;
+  background: #ff4081;
 }
 
 .btn-secondary {
-  background: #1a1a1a;
-  color: #e5e5e5;
-  border: 1px solid #2a2a2a;
+  background: #1a0a14;
+  color: #ff80ab;
+  border: 1px solid #880e4f;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #222;
+  background: #2d1a24;
+  border-color: #ff80ab;
 }
 
 .btn-danger {
@@ -261,8 +263,8 @@ body::before {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: linear-gradient(135deg, #1a0a14 0%, #2d1a24 100%);
+  border: 1px solid #880e4f;
   border-radius: 12px;
   margin-bottom: 8px;
   gap: 16px;
@@ -280,26 +282,26 @@ body::before {
 
 .room-meta {
   font-size: 13px;
-  color: #888;
+  color: #ce93d8;
 }
 
 .room-code {
   display: inline-block;
   padding: 1px 8px;
-  background: #0d0d0d;
-  border: 1px dashed #333;
+  background: #1a0a14;
+  border: 1px dashed #880e4f;
   border-radius: 4px;
   font-family: monospace;
   font-size: 12px;
-  color: #888;
+  color: #ff80ab;
   cursor: pointer;
   transition: border-color 0.15s;
   vertical-align: middle;
 }
 
 .room-code:hover {
-  border-color: #e5e5e5;
-  color: #e5e5e5;
+  border-color: #ff4081;
+  color: #ff4081;
 }
 
 .room-actions {
@@ -384,21 +386,21 @@ body::before {
 .join-row input {
   flex: 1;
   padding: 12px 14px;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: #1a0a14;
+  border: 1px solid #880e4f;
   border-radius: 10px;
-  color: #e5e5e5;
+  color: #fce4ec;
   font-size: 14px;
   outline: none;
   transition: border-color 0.15s;
 }
 
 .join-row input:focus {
-  border-color: #e5e5e5;
+  border-color: #ff80ab;
 }
 
 .join-row input::placeholder {
-  color: #555;
+  color: #880e4f;
 }
 
 /* modal */
@@ -413,8 +415,8 @@ body::before {
 }
 
 .modal {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
+  background: linear-gradient(135deg, #1a0a14 0%, #2d1a24 100%);
+  border: 1px solid #880e4f;
   border-radius: 16px;
   padding: 24px;
   width: 90%;
@@ -878,4 +880,13 @@ body::before {
     scrollbar-width: thin;
     scrollbar-color: #2a2a2a #0d0d0d;
   }
+}
+
+.sakura {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 100% 0 100% 0;
+  background: linear-gradient(135deg, #ffcdd2 0%, #f8bbd9 50%, #fce4ec 100%);
+  box-shadow: 0 0 10px rgba(255, 192, 203, 0.5);
 }
