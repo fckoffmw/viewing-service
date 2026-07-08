@@ -10,21 +10,23 @@
 | [docs/arch.md](docs/arch.md) | Архитектура |
 | [docs/run.md](docs/run.md) | Запуск |
 | [docs/api.md](docs/api.md) | REST API |
-| [docs/auth.md](docs/auth.md) | Аутентификация |
+| [docs/features/auth.md](docs/features/auth.md) | Аутентификация |
+| [docs/features/ws-protocol.md](docs/features/ws-protocol.md) | WebSocket протокол |
 | [docs/tasks.md](docs/tasks.md) | TODO |
 
 ## Текущее состояние
 
 - Аутентификация: register, login, logout, /auth/me
 - REST API: sources, rooms (мультикомнаты)
-- WebSocket чат: /ws/{invite_code}
+- WebSocket чат и синхронизация: /ws/{invite_code}
+- Синхронизация просмотра (play/pause/seek)
 - Источники: CRUD через API
 - Комнаты: несколько комнат с invite-кодами
 
 ## Быстрый старт
 
 ```bash
-go run ./cmd/w2g
+task run
 ```
 
 Сервис доступен на `http://localhost:8080`

@@ -1,7 +1,6 @@
 package room
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +9,7 @@ import (
 
 	"log/slog"
 
+	"w2g/internal/utils/ctx"
 )
 
 var errHandler = errors.New("handler error")
@@ -97,8 +97,7 @@ func TestHandlerCreate(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, "/api/rooms", strings.NewReader(tt.body))
-			ctx := context.WithValue(r.Context(), "user_id", "user1")
-			r = r.WithContext(ctx)
+			r = r.WithContext(ctx.WithUserID(r.Context(), "user1"))
 
 			h.Create(w, r)
 
@@ -191,8 +190,7 @@ func TestHandlerDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodDelete, tt.path, nil)
-			ctx := context.WithValue(r.Context(), "user_id", tt.userID)
-			r = r.WithContext(ctx)
+			r = r.WithContext(ctx.WithUserID(r.Context(), tt.userID))
 
 			h.Delete(w, r)
 
@@ -254,8 +252,7 @@ func TestHandlerPatchSource(t *testing.T) {
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPatch, tt.path, strings.NewReader(tt.body))
-			ctx := context.WithValue(r.Context(), "user_id", tt.userID)
-			r = r.WithContext(ctx)
+			r = r.WithContext(ctx.WithUserID(r.Context(), tt.userID))
 
 			h.PatchSource(w, r)
 

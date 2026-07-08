@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"w2g/internal/apperrors"
+	"w2g/internal/utils/ctx"
 	"w2g/internal/http/response"
 )
 
@@ -35,27 +36,31 @@ func NewHandler(s Service, l *slog.Logger) *handler {
 }
 
 func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+
+	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
-		h.log.Error("when reading req body", "request_id", requestID, "err", err)
+		h.log.Warn("when reading req body", "request_id", requestID, "err", err)
 		response.WriteBadRequest(w, "cannot read req body")
+
 		return
 	}
-	r.Body.Close()
 
 	sessionID, err := h.service.Login(creds.Username, creds.Password)
 	if err != nil {
-		h.log.Error("when login", "request_id", requestID, "err", err)
-
 		var appErr *apperrors.Error
 		if errors.As(err, &appErr) {
+			h.log.Warn("when login", "request_id", requestID, "err", err)
 			response.WriteError(w, appErr.Code, appErr.Message)
+
 			return
 		}
 
+		h.log.Error("when login", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "internal server error")
+
 		return
 	}
 
@@ -66,27 +71,31 @@ func (h *handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) Register(w http.ResponseWriter, r *http.Request) {
-	requestID, _ := r.Context().Value("request_id").(string)
+	requestID := ctx.RequestIDFromContext(r.Context())
+
+	defer r.Body.Close()
 
 	var creds credentials
 	if err := decodeJSON(r, &creds); err != nil {
-		h.log.Error("when reading req body", "request_id", requestID, "err", err)
+		h.log.Warn("when reading req body", "request_id", requestID, "err", err)
 		response.WriteBadRequest(w, "cannot read req body")
+
 		return
 	}
-	r.Body.Close()
 
 	sessionID, err := h.service.Register(creds.Username, creds.Password)
 	if err != nil {
-		h.log.Error("when register", "request_id", requestID, "err", err)
-
 		var appErr *apperrors.Error
 		if errors.As(err, &appErr) {
+			h.log.Warn("when register", "request_id", requestID, "err", err)
 			response.WriteError(w, appErr.Code, appErr.Message)
+
 			return
 		}
 
+		h.log.Error("when register", "request_id", requestID, "err", err)
 		response.WriteInternalError(w, "internal server error")
+
 		return
 	}
 

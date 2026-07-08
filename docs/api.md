@@ -1,6 +1,6 @@
 # REST API
 
-Все ошибки возвращают `{"error": "..."}`.
+Все ошибки возвращают `{"error": "..."}` (кроме WebSocket upgrade, где plain text).
 
 ---
 
@@ -15,9 +15,7 @@
 {"username": "user123", "password": "password123"}
 ```
 
-**Response 201:**
-- `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
-- `null`
+**Response 201:** `null` + `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`
 
 **Response 400:**
 ```json
@@ -37,16 +35,12 @@
 
 ### POST /auth/login
 
-Вход в систему.
-
 **Request:**
 ```json
 {"username": "user123", "password": "password123"}
 ```
 
-**Response 200:**
-- `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800`
-- `null`
+**Response 200:** `null` + `Set-Cookie: session_id=...; HttpOnly; Path=/; Max-Age=604800; SameSite=Lax`
 
 **Response 400:**
 ```json
@@ -58,27 +52,28 @@
 {"error": "invalid credentials"}
 ```
 
+**Response 500:**
+```json
+{"error": "internal server error"}
+```
+
 ---
 
 ### POST /auth/logout
 
-Выход из системы. Требует `session_id` cookie.
+Выход из системы. Удаляет сессию из памяти, очищает cookie.
 
-**Response 200:**
-- `Set-Cookie: session_id=; Max-Age=-1`
+**Response 200:** пустое тело + `Set-Cookie: session_id=; Path=/; Max-Age=-1`
 
 ---
 
 ### GET /auth/me
 
-Информация о текущем пользователе. Требует `session_id` cookie.
+Информация о текущем пользователе. Аутентифицируется через `session_id` cookie (на уровне хендлера, middleware пропускает).
 
 **Response 200:**
 ```json
-{
-  "id": "1",
-  "username": "user123"
-}
+{"id": "1", "username": "user123"}
 ```
 
 **Response 401:**
@@ -92,24 +87,25 @@
 
 ### GET /api/sources
 
-Список источников. Защищённый endpoint.
+Список источников. Требует `session_id` cookie.
 
 **Response 200:**
 ```json
-[
-  {
-    "id": "1",
-    "name": "Семь (1995)",
-    "url": "https://vkvideo.ru/..."
-  }
-]
+[{"id": "1", "name": "Семь (1995)", "url": "https://vkvideo.ru/..."}]
+```
+
+Пустой список: `null` (а не `[]`).
+
+**Response 500:**
+```json
+{"error": "cannot get sources"}
 ```
 
 ---
 
 ### POST /api/sources
 
-Добавить источник. Защищённый endpoint.
+Добавить источник. Требует `session_id` cookie.
 
 **Request:**
 ```json
@@ -127,13 +123,58 @@
 {"error": "name and url are required"}
 ```
 
+**Response 500:**
+```json
+{"error": "cannot add source"}
+```
+
+---
+
+### PATCH /api/sources/{id}
+
+Обновить источник. Требует `session_id` cookie.
+
+**Request:**
+```json
+{"name": "Новое название", "url": "https://..."}
+```
+
+**Response 200:**
+```json
+{"id": "1"}
+```
+
+**Response 400:**
+```json
+{"error": "cannot read req body"}
+{"error": "name and url are required"}
+```
+
+**Response 500:**
+```json
+{"error": "cannot update source"}
+```
+
+---
+
+### DELETE /api/sources/{id}
+
+Удалить источник. Требует `session_id` cookie.
+
+**Response 200:** пустое тело (`{}`)
+
+**Response 500:**
+```json
+{"error": "cannot delete source"}
+```
+
 ---
 
 ## Комнаты
 
 ### POST /api/rooms
 
-Создать комнату. Защищённый endpoint.
+Создать комнату. Требует `session_id` cookie.
 
 **Request:**
 ```json
@@ -159,11 +200,16 @@
 {"error": "max rooms reached"}
 ```
 
+**Response 500:**
+```json
+{"error": "cannot create room"}
+```
+
 ---
 
 ### GET /api/rooms
 
-Список всех комнат. Защищённый endpoint.
+Список всех комнат. Требует `session_id` cookie.
 
 **Response 200:**
 ```json
@@ -174,23 +220,22 @@
     "invite_code": "X7K2PQ4M",
     "owner_id": "1",
     "members_online": 0,
-    "current_source": {
-      "id": "1",
-      "name": "Название",
-      "url": "https://..."
-    },
+    "current_source": {"id": "1", "name": "Название", "url": "https://..."},
     "created_at": "2025-01-01T00:00:00Z"
   }
 ]
 ```
 
-Поле `current_source` присутствует только если для комнаты выбран источник.
+Пустой список: `[]`.
+
+`current_source` — присутствует только если для комнаты выбран источник (`omitempty`).
+`members_online` — количество участников в WebSocket-комнате (in-memory, без комнаты — 0).
 
 ---
 
 ### GET /api/rooms/{invite_code}
 
-Информация о комнате. Защищённый endpoint.
+Информация о комнате. Требует `session_id` cookie.
 
 **Response 200:**
 ```json
@@ -200,16 +245,10 @@
   "invite_code": "X7K2PQ4M",
   "owner_id": "1",
   "members_online": 0,
-  "current_source": {
-    "id": "1",
-    "name": "Название",
-    "url": "https://..."
-  },
+  "current_source": {"id": "1", "name": "Название", "url": "https://..."},
   "created_at": "2025-01-01T00:00:00Z"
 }
 ```
-
-Поле `current_source` присутствует только если для комнаты выбран источник.
 
 **Response 404:**
 ```json
@@ -220,12 +259,9 @@
 
 ### DELETE /api/rooms/{invite_code}
 
-Удалить комнату. Только owner. Защищённый endpoint.
+Удалить комнату. Только owner. Требует `session_id` cookie.
 
-**Response 200:**
-```json
-{"status": "deleted"}
-```
+**Response 200:** пустое тело (`{}`)
 
 **Response 403:**
 ```json
@@ -237,11 +273,16 @@
 {"error": "room not found"}
 ```
 
+**Response 500:**
+```json
+{"error": "cannot delete room"}
+```
+
 ---
 
 ### PATCH /api/rooms/{invite_code}/source
 
-Установить активный источник. Только owner. Защищённый endpoint.
+Установить активный источник. Только owner. Требует `session_id` cookie.
 
 **Request:**
 ```json
@@ -269,37 +310,10 @@
 {"error": "room not found"}
 ```
 
----
-
-## WebSocket
-
-### GET /ws/{invite_code}
-
-Чат комнаты. Защищённый endpoint (требует `session_id` cookie).
-
-**Клиент → сервер:**
+**Response 500:**
 ```json
-{"text": "Привет!"}
+{"error": "cannot change source"}
 ```
-
-**Сервер → клиент (чат):**
-```json
-{"username": "user123", "text": "Привет!"}
-```
-
-**Сервер → клиент (смена источника):**
-```json
-{
-  "type": "source_changed",
-  "payload": {
-    "source_id": "1",
-    "source_url": "https://..."
-  }
-}
-```
-
-**Response 401 (неавторизован):**
-- `401 Unauthorized`
 
 ---
 
@@ -307,4 +321,55 @@
 
 ### X-Request-ID
 
-Идентификатор запроса (8 символов, первая часть UUID) для трейсинга. Добавляется в каждый ответ.
+Идентификатор запроса (8 символов UUID) для трейсинга. Добавляется в каждый ответ.
+
+---
+
+## WebSocket
+
+### ws://localhost:8080/ws/{invite_code}
+
+Требует `session_id` cookie (HTTP upgrade request). Без валидной сессии — `401 Unauthorized` (plain text).
+
+Ошибки до upgrade возвращаются plain text:
+- Нет cookie: `401 unauthorized`
+- Невалидная сессия: `401 unauthorized`
+- Нет invite_code: `400 missing invite code`
+
+#### Формат фреймов
+
+Каждый фрейм — JSON:
+```json
+{"type": "<message_type>", "username": "...", "payload": {...}}
+```
+
+Поле `username` присутствует не для всех типов.
+Поле `timestamp` — зарезервировано, пока не используется (`omitempty`).
+
+#### Входящие (клиент → сервер)
+
+```json
+{"type": "chat",  "payload": {"text": "hello"}}
+{"type": "play",  "payload": {"position": 42.5}}
+{"type": "pause", "payload": {"position": 42.5}}
+{"type": "seek",  "payload": {"position": 120.0}}
+```
+
+#### Исходящие (сервер → клиент)
+
+| type | username | payload | Кому |
+|------|----------|---------|------|
+| `sync` | — | `{"source_id":"...","source_url":"...","playing":true,"position":0.0,"updated_at":"..."}` | только новому клиенту |
+| `chat` | `username` | `{"text":"..."}` | всем, кроме отправителя |
+| `play` | `username` | `{"position":42.5}` | всем |
+| `pause` | `username` | `{"position":42.5}` | всем |
+| `seek` | `username` | `{"position":120.0}` | всем |
+| `source_changed` | — | `{"source_id":"...","source_url":"..."}` | всем |
+
+#### Правила
+
+- `username` заполнен для `chat`, `play`, `pause`, `seek`; отсутствует для `sync` и `source_changed`.
+- `chat` не идёт отправителю (остальные — всем).
+- Чат: текст обрезается до 1000 символов.
+- `source_changed` приходит через `PATCH /api/rooms/{invite_code}/source` и проксируется в WS (отправитель не указан).
+- `play`, `pause`, `seek` доступны любому аутентифицированному участнику комнаты.

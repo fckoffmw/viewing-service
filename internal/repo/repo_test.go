@@ -52,10 +52,9 @@ func (r testRow4) check(t *testing.T, index int, expected rowChecker) {
 }
 
 type testCase struct {
-	name      string
-	rows      [][]string
-	expected  []rowChecker
-	wantError bool
+	name     string
+	rows     [][]string
+	expected []rowChecker
 }
 
 func TestRowsTo(t *testing.T) {

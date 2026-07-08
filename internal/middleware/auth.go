@@ -1,15 +1,15 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
-	"w2g/internal/auth"
 
 	"w2g/internal/apperrors"
+	"w2g/internal/auth"
+	"w2g/internal/utils/ctx"
 )
 
 type Middleware func(http.Handler, ...any) http.Handler
@@ -42,22 +42,28 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 		}
 		if r.URL.Path == "/" || strings.HasPrefix(r.URL.Path, "/static/") || strings.HasPrefix(r.URL.Path, "/demo/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 		if publicPaths[r.URL.Path] {
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
 		cookie, err := r.Cookie("session_id")
 		if err != nil {
+			log.Warn("unauthorized", "reason", "no session cookie")
 			writeUnauthorized(w, "session not found")
+
 			return
 		}
 
 		session, ok := sessionStore.Get(cookie.Value)
 		if !ok {
+			log.Warn("unauthorized", "reason", "invalid session")
 			writeUnauthorized(w, "session not found")
+
 			return
 		}
 
@@ -66,19 +72,8 @@ func Auth(log *slog.Logger, next http.Handler, sessionStore SessionStore) http.H
 		session.ExpiresAt = now.Add(auth.SessionExpiry)
 		sessionStore.Set(session)
 
-		requestID, _ := r.Context().Value("request_id").(string)
-		ctx := context.WithValue(r.Context(), "user_id", session.UserID)
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctx.WithUserID(r.Context(), session.UserID))
 
-		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
-		next.ServeHTTP(sw, r)
-
-		log.Info("request",
-			"user_id", session.UserID,
-			"request_id", requestID,
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", sw.status,
-		)
+		next.ServeHTTP(w, r)
 	})
 }

@@ -1,10 +1,11 @@
 package middleware
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"w2g/internal/utils/ctx"
 
 	"github.com/google/uuid"
 )
@@ -19,8 +20,7 @@ func Logging(log *slog.Logger, next http.Handler) http.Handler {
 
 		requestID := uuid.New().String()[:uuidLen]
 
-		ctx := context.WithValue(r.Context(), "request_id", requestID)
-		r = r.WithContext(ctx)
+		r = r.WithContext(ctx.WithRequestID(r.Context(), requestID))
 
 		w.Header().Set("X-Request-ID", requestID)
 

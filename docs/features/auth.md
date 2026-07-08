@@ -33,7 +33,7 @@
 |-------|-----|-------------|
 | POST | `/auth/register` | Нет |
 | POST | `/auth/login` | Нет |
-| POST | `/auth/logout` | Да |
+| POST | `/auth/logout` | Нет |
 | GET | `/auth/me` | Да |
 
 ## Валидация

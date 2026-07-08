@@ -41,6 +41,7 @@ temp/
 /storage/
 /.qwen/
 /.opencode/
+/.task/
 TODO.md
 
 /web/profile-v2.css

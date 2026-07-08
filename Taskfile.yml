@@ -1,0 +1,59 @@
+version: '3'
+
+vars:
+  BIN_DIR: .task/bin
+  PID_DIR: .task/pids
+  LOG_DIR: .task/logs
+
+tasks:
+  default:
+    desc: "Build and run the application"
+    cmds:
+      - task --list
+
+  test:
+    desc: "Run tests with coverage"
+    cmds:
+      - go test ./... -cover -count=1
+
+  lint:
+    desc: "Run linters"
+    cmds:
+      - mkdir -p {{.LOG_DIR}}
+      - golangci-lint run 2>&1 | tee {{.LOG_DIR}}/lint.txt
+
+  build:
+    desc: "Build the application"
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - go build -o {{.BIN_DIR}}/web ./cmd/web
+      - go build -o {{.BIN_DIR}}/w2g ./cmd/w2g
+
+  run:web:
+    desc: "Run the web server"
+    deps: [build]
+    cmds:
+      - mkdir -p {{.PID_DIR}} {{.LOG_DIR}}
+      - bash -c 'nohup {{.BIN_DIR}}/web > {{.LOG_DIR}}/web.log 2>&1 & echo $! > {{.PID_DIR}}/web.pid'
+
+  run:w2g:
+    desc: "Run the w2g service"
+    deps: [build]
+    cmds:
+      - mkdir -p {{.PID_DIR}} {{.LOG_DIR}}
+      - bash -c 'nohup {{.BIN_DIR}}/w2g > {{.LOG_DIR}}/w2g.log 2>&1 & echo $! > {{.PID_DIR}}/w2g.pid'
+
+  run:
+    desc: "Run all services"
+    deps: [test, lint]
+    cmds:
+      - task: stop
+      - task: build
+      - task: run:web
+      - task: run:w2g
+
+  stop:
+    desc: "Stop all running services"
+    cmds:
+      - fuser -k 8080/tcp 8081/tcp >/dev/null 2>&1 || true
+      - rm -f {{.PID_DIR}}/*.pid

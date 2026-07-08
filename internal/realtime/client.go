@@ -1,10 +1,9 @@
-package chat
+package realtime
 
 import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"w2g/internal/auth"
@@ -16,8 +15,12 @@ const (
 	writeWait      = 10 * time.Second
 	pongWait       = 60 * time.Second
 	pingPeriod     = (pongWait * 9) / 10
-	maxMessageSize = 1024
-	maxTextLen     = 500
+	maxMessageSize = 2048
+	maxTextLen     = 1000
+	clientBufSize  = 256
+
+	sessionIDCookie = "session_id"
+	inviteCodeParam = "invite_code"
 )
 
 var upgrader = websocket.Upgrader{
@@ -28,20 +31,21 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-type chatMessage struct {
-	Username string `json:"username"`
-	Text     string `json:"text"`
+type incomingEvent struct {
+	Username string
+	Sender   sender
+	Message  incomingMessage
 }
 
-type Client struct {
+type client struct {
 	hub      *hub
 	conn     *websocket.Conn
-	send     chan []byte
+	send     chan outgoingMessage
 	username string
 	userID   string
 }
 
-type AuthService interface {
+type authService interface {
 	GetUserBySession(sessionID string) (*auth.User, error)
 }
 
@@ -49,8 +53,8 @@ type HubGetter interface {
 	GetOrCreate(roomID string) *hub
 }
 
-func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("session_id")
+func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc authService, w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(sessionIDCookie)
 	if err != nil {
 		log.Debug("ws: no session cookie")
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
@@ -64,31 +68,38 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 		return
 	}
 
-	inviteCode := r.PathValue("invite_code")
+	inviteCode := r.PathValue(inviteCodeParam)
 	if inviteCode == "" {
-		inviteCode = extractInviteCodeFromPath(r.URL.Path)
+		log.Debug("ws: missing invite_code in path")
+		http.Error(w, "missing invite code", http.StatusBadRequest)
+
+		return
 	}
 
 	roomHub := hubManager.GetOrCreate(inviteCode)
 	if roomHub == nil {
 		log.Error("ws: failed to get or create hub")
 		http.Error(w, "internal error", http.StatusInternalServerError)
+
 		return
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Debug("ws: upgrade failed", "err", err)
+
 		return
 	}
 
-	client := &Client{
+	client := &client{
 		hub:      roomHub,
 		conn:     conn,
 		username: user.Username,
 		userID:   user.ID,
-		send:     make(chan []byte, 256),
+		send:     make(chan outgoingMessage, clientBufSize),
 	}
+
+	log.Info("ws client connected", "username", user.Username, "user_id", user.ID, "room_id", inviteCode)
 
 	roomHub.Register() <- client
 
@@ -96,11 +107,11 @@ func ServeWS(log *slog.Logger, hubManager HubGetter, authSvc AuthService, w http
 	go client.readPump(log, roomHub)
 }
 
-func (c *Client) Send() chan []byte {
+func (c *client) Send() chan outgoingMessage {
 	return c.send
 }
 
-func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
+func (c *client) readPump(log *slog.Logger, roomHub *hub) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Error("ws: readPump panic", "recover", r, "user_id", c.userID)
@@ -112,8 +123,7 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 	c.conn.SetReadLimit(maxMessageSize)
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 
 	for {
@@ -122,37 +132,33 @@ func (c *Client) readPump(log *slog.Logger, roomHub *hub) {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Debug("ws: unexpected close", "err", err)
 			}
+
 			break
 		}
 
-		var msg chatMessage
+		var msg incomingMessage
 		if err := json.NewDecoder(reader).Decode(&msg); err != nil {
 			log.Debug("ws: decode error", "err", err)
 			continue
 		}
 
-		msg.Username = c.username
-		msg.Text = strings.TrimSpace(msg.Text)
+		log.Debug("ws message received",
+			"type", msg.Type,
+			"username", c.username,
+			"payload", string(msg.Payload),
+		)
 
-		if msg.Text == "" {
-			continue
+		evt := incomingEvent{
+			Username: c.username,
+			Sender:   c,
+			Message:  msg,
 		}
 
-		if len(msg.Text) > maxTextLen {
-			msg.Text = msg.Text[:maxTextLen]
-		}
-
-		data, err := json.Marshal(msg)
-		if err != nil {
-			log.Error("ws: marshal error", "err", err)
-			continue
-		}
-
-		roomHub.Broadcast() <- data
+		roomHub.Incoming() <- evt
 	}
 }
 
-func (c *Client) writePump(log *slog.Logger) {
+func (c *client) writePump(log *slog.Logger) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		if r := recover(); r != nil {
@@ -176,12 +182,22 @@ func (c *Client) writePump(log *slog.Logger) {
 				log.Debug("ws: write error", "err", err)
 				return
 			}
-			w.Write(msg)
+
+			data, err := json.Marshal(msg)
+			if err != nil {
+				log.Error("ws: marshal error", "err", err)
+
+				return
+			}
+			w.Write(data)
 
 			if err := w.Close(); err != nil {
 				log.Debug("ws: write close error", "err", err)
+
 				return
 			}
+
+			log.Debug("ws message sent", "type", msg.Type, "username", msg.Username, "payload", string(data))
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
@@ -189,12 +205,4 @@ func (c *Client) writePump(log *slog.Logger) {
 			}
 		}
 	}
-}
-
-func extractInviteCodeFromPath(path string) string {
-	if idx := strings.LastIndex(path, "/"); idx >= 0 && idx+1 < len(path) {
-		return path[idx+1:]
-	}
-
-	return ""
 }

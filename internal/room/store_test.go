@@ -2,18 +2,16 @@ package room
 
 import (
 	"errors"
-	"log/slog"
 	"testing"
 )
 
 var errCSV = errors.New("csv error")
 
 type mockCSVStorage struct {
-	rooms     []Room
-	getErr    error
-	addErr    error
-	delErr    error
-	deleteErr error
+	rooms  []Room
+	getErr error
+	addErr error
+	delErr error
 }
 
 func (m *mockCSVStorage) GetAllRooms() ([]Room, error) {
@@ -79,7 +77,7 @@ func TestNewStore(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			csv := &mockCSVStorage{rooms: tt.rooms, getErr: tt.err}
-			store, err := NewStore(slog.Default(), csv)
+			store, err := NewStore(csv)
 
 			if tt.err != nil {
 				if err == nil {

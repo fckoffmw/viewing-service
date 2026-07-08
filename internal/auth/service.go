@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"time"
 
 	"w2g/internal/apperrors"
@@ -54,7 +55,7 @@ func NewService(r repository, s SessionStore) *service {
 func (s *service) Login(username, password string) (string, error) {
 	user, err := s.repo.GetUserByUsername(username)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get user by username: %w", err)
 	}
 	if user == nil {
 		return "", InvalidCredentials()
@@ -86,7 +87,7 @@ func (s *service) Register(username, password string) (string, error) {
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), hashCost)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("hash password: %w", err)
 	}
 
 	createdAt := time.Now()
@@ -97,7 +98,7 @@ func (s *service) Register(username, password string) (string, error) {
 		CreatedAt:    createdAt,
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("add user: %w", err)
 	}
 
 	sessionID := generateSessionID()
@@ -125,7 +126,7 @@ func (s *service) GetUserBySession(sessionID string) (*User, error) {
 
 	user, err := s.repo.GetUserByID(sess.UserID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get user by id: %w", err)
 	}
 	if user == nil {
 		return nil, InvalidCredentials()
@@ -149,7 +150,7 @@ func (s *service) checkUsernameAndPasswordWhenRegister(username, password string
 
 	user, err := s.repo.GetUserByUsername(username)
 	if err != nil {
-		return apperrors.Internal(err.Error())
+		return apperrors.Internal(fmt.Sprintf("check user: %v", err))
 	}
 
 	if user != nil {

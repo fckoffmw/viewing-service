@@ -19,10 +19,11 @@ type Config struct {
 
 func Load() *Config {
 	_ = godotenv.Load()
+
 	return &Config{
 		Port:                    getEnv("PORT", "8080"),
 		StorageDir:              getEnv("STORAGE_DIR", "./storage/"),
-		LogLevel:                getEnv("LOG_LEVEL", "debug"),
+		LogLevel:                getEnv("LOG_LEVEL", "info"),
 		LogFile:                 getEnv("LOG_FILE", ""),
 		SessionsCleanupInterval: getEnvInt("SESSIONS_CLEANUP_INTERVAL", 300),
 		MaxRoomsPerUser:         getEnvInt("MAX_ROOMS_PER_USER", 10),
@@ -45,6 +46,7 @@ func getEnvInt(key string, fallback int) int {
 	if err != nil {
 		return fallback
 	}
+
 	return i
 }
 
@@ -58,5 +60,6 @@ func getEnv(key, fallback string) string {
 			return fallback
 		}
 	}
+
 	return value
 }

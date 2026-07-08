@@ -1,4 +1,4 @@
-package strutils
+package str
 
 import (
 	"crypto/rand"
