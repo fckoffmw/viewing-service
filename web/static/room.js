@@ -148,12 +148,15 @@ function appendMessage(type, username, text) {
     div.textContent = text;
   } else {
     div.className = "room-msg";
+
     var color = getUserColor(username);
     div.style.borderLeftColor = color;
+
     var nameSpan = document.createElement("span");
     nameSpan.className = "room-msg-username";
     nameSpan.style.color = color;
     nameSpan.textContent = username + ":";
+    
     var textSpan = document.createElement("span");
     textSpan.className = "room-msg-text";
     textSpan.textContent = text;

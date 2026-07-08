@@ -1,7 +1,7 @@
 (async function checkAlreadyLogged() {
     try {
-    var res = await fetch('/auth/me')
-    if (res.ok) window.location.href = '/index.html'
+        var res = await fetch('/auth/me')
+        if (res.ok) window.location.href = '/index.html'
     } catch {}
 })()
 
@@ -17,10 +17,10 @@ document.getElementById('register-form').addEventListener('submit', async functi
     btn.textContent = 'Регистрация...'
 
     try {
-    var res = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password }),
+        var res = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: username, password: password }),
     })
     var data = await res.json()
 
@@ -28,13 +28,14 @@ document.getElementById('register-form').addEventListener('submit', async functi
         window.location.href = '/index.html'
         return
     }
+    
     errorEl.textContent = data.error || 'Ошибка регистрации'
     errorEl.style.display = 'block'
     } catch {
-    errorEl.textContent = 'Ошибка соединения'
-    errorEl.style.display = 'block'
+        errorEl.textContent = 'Ошибка соединения'
+        errorEl.style.display = 'block'
     } finally {
-    btn.disabled = false
-    btn.textContent = 'Зарегистрироваться'
+        btn.disabled = false
+        btn.textContent = 'Зарегистрироваться'
     }
 })

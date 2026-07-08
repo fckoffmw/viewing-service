@@ -110,12 +110,14 @@ async function handleCreate(e) {
     btn.textContent = 'Создание...'
 
     try {
-    var res = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name }),
+        var res = await fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: name }),
     })
+
     var data = await res.json()
+
     if (res.ok) {
         closeCreateModal()
         window.location.href = '/room.html?invite=' + data.invite_code
@@ -123,14 +125,13 @@ async function handleCreate(e) {
         alert(data.error || 'Ошибка создания')
     }
     } catch {
-    alert('Ошибка соединения')
+        alert('Ошибка соединения')
     } finally {
-    btn.disabled = false
-    btn.textContent = 'Создать'
+        btn.disabled = false
+        btn.textContent = 'Создать'
     }
 }
 
-// --- join ---
 async function joinByCode() {
     var code = document.getElementById('join-code').value.trim().toUpperCase()
     if (!code) return
@@ -147,10 +148,9 @@ async function joinByCode() {
     }
 }
 
-// --- delete room ---
 async function deleteRoom(code) {
     var delRoom = rooms.find(function (r) {
-    return r.invite_code === code
+        return r.invite_code === code
     })
 
     if (!confirm('Удалить комнату "' + delRoom.name + '"? Это действие нельзя отменить.')) return
