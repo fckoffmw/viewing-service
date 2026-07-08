@@ -16,15 +16,15 @@ checkAuth();
 
 async function checkAuth() {
     try {
-    var res = await fetch("/auth/me");
-    if (!res.ok) { window.location.href = "/login.html"; return; }
-    var user = await res.json();
-    currentUserId = user.id;
-    currentUsername = user.username;
-    document.getElementById("nav-username").textContent = user.username;
-    loadSources();
+        var res = await fetch("/auth/me");
+        if (!res.ok) { window.location.href = "/login.html"; return; }
+        var user = await res.json();
+        currentUserId = user.id;
+        currentUsername = user.username;
+        document.getElementById("nav-username").textContent = user.username;
+        loadSources();
     } catch {
-    window.location.href = "/login.html";
+        window.location.href = "/login.html";
     }
 }
 
@@ -50,41 +50,41 @@ async function loadSources() {
     }
 
     try {
-    var res = await fetch("/api/sources");
-    if (!res.ok) {
-        container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
-        return;
-    }
-    var sources = await res.json();
-    if (sources.length === 0) {
-        container.innerHTML = '<div class="empty">Нет источников. Добавьте первый.</div>';
-        return;
-    }
-    container.innerHTML = sources.map(function(s) {
-        var isActive = s.id === activeSourceId;
-        var activeClass = isActive ? " source-item-active" : "";
-        var activeBtn = "";
-        if (inviteCode) {
-        var disabled = isActive ? " disabled" : "";
-        var label = isActive ? "Активен" : "Сделать активным";
-        activeBtn = '<button onclick="setActive(\'' + s.id + '\')" class="btn btn-primary btn-sm"' + disabled + ">" + label + "</button>";
+        var res = await fetch("/api/sources");
+        if (!res.ok) {
+            container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+            return;
         }
-        return (
-        '<div class="source-item' + activeClass + '">' +
-            '<div class="source-item-info">' +
-            '<div class="source-item-name">' + esc(s.name) + '</div>' +
-            '<div class="source-item-url">' + esc(s.url) + '</div>' +
-            '</div>' +
-            '<div class="source-item-actions">' +
-            activeBtn +
-            '<button onclick="editSource(\'' + s.id + '\')" class="btn btn-secondary btn-sm">✎</button>' +
-            '<button onclick="deleteSource(\'' + s.id + '\', \'' + esc(s.name) + '\')" class="btn btn-danger btn-sm">✕</button>' +
-            '</div>' +
-        '</div>'
-        );
-    }).join("");
+        var sources = await res.json();
+        if (sources.length === 0) {
+            container.innerHTML = '<div class="empty">Нет источников. Добавьте первый.</div>';
+            return;
+        }
+        container.innerHTML = sources.map(function(s) {
+            var isActive = s.id === activeSourceId;
+            var activeClass = isActive ? " source-item-active" : "";
+            var activeBtn = "";
+            if (inviteCode) {
+            var disabled = isActive ? " disabled" : "";
+            var label = isActive ? "Активен" : "Сделать активным";
+            activeBtn = '<button onclick="setActive(\'' + s.id + '\')" class="btn btn-primary btn-sm"' + disabled + ">" + label + "</button>";
+            }
+            return (
+            '<div class="source-item' + activeClass + '">' +
+                '<div class="source-item-info">' +
+                '<div class="source-item-name">' + esc(s.name) + '</div>' +
+                '<div class="source-item-url">' + esc(s.url) + '</div>' +
+                '</div>' +
+                '<div class="source-item-actions">' +
+                activeBtn +
+                '<button onclick="editSource(\'' + s.id + '\')" class="btn btn-secondary btn-sm">✎</button>' +
+                '<button onclick="deleteSource(\'' + s.id + '\', \'' + esc(s.name) + '\')" class="btn btn-danger btn-sm">✕</button>' +
+                '</div>' +
+            '</div>'
+            );
+        }).join("");
     } catch {
-    container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
+        container.innerHTML = '<div class="empty">Ошибка загрузки</div>';
     }
 }
 
@@ -107,20 +107,20 @@ document.getElementById("add-form").addEventListener("submit", async function(e)
     if (!name || !url) return;
 
     try {
-    var res = await fetch("/api/sources", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name, url: url }),
-    });
-    if (res.ok) {
-        closeAddModal();
-        loadSources();
-    } else {
-        var data = await res.json();
-        showToast("Ошибка: " + (data.error || "неизвестная"));
+        var res = await fetch("/api/sources", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name, url: url }),
+        });
+        if (res.ok) {
+            closeAddModal();
+            loadSources();
+        } else {
+            var data = await res.json();
+            showToast("Ошибка: " + (data.error || "неизвестная"));
     }
     } catch {
-    showToast("Ошибка сети");
+        showToast("Ошибка сети");
     }
 });
 
@@ -128,19 +128,19 @@ document.getElementById("add-form").addEventListener("submit", async function(e)
 async function setActive(id) {
     if (!inviteCode) return;
     try {
-    var res = await fetch("/api/rooms/" + inviteCode + "/source", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source_id: id }),
-    });
-    if (res.ok) {
-        loadSources();
-    } else {
-        var data = await res.json();
-        showToast("Ошибка: " + (data.error || "неизвестная"));
+        var res = await fetch("/api/rooms/" + inviteCode + "/source", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ source_id: id }),
+        });
+        if (res.ok) {
+            loadSources();
+        } else {
+            var data = await res.json();
+            showToast("Ошибка: " + (data.error || "неизвестная"));
     }
     } catch {
-    showToast("Ошибка сети");
+        showToast("Ошибка сети");
     }
 }
 
