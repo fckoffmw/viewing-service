@@ -5,6 +5,12 @@ var roomOwnerId = "";
 var ws = null;
 var reconnectTimer = null;
 
+var vkPlayer = null;
+var pollTimer = null;
+var suppressCount = 0;
+var lastKnownState = { playing: false, position: 0 };
+var pendingSync = null;
+
 window.addEventListener("beforeunload", function () {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
@@ -13,6 +19,103 @@ window.addEventListener("beforeunload", function () {
     ws.close()
   }
 })
+
+function wsSend(type, payload) {
+  var msg = JSON.stringify({type: type, payload: payload});
+  console.log("[WS] send", type, JSON.stringify(payload));
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(msg);
+}
+
+function pollPlayer() {
+  if (!vkPlayer) return;
+
+  try {
+    var currentTime = vkPlayer.getCurrentTime() || 0;
+    var stateStr = vkPlayer.getState();
+    if (!stateStr || stateStr === 'uninited') return;
+
+    var currentPlaying = stateStr === 'playing';
+
+    if (suppressCount > 0) {
+      suppressCount--;
+      lastKnownState.playing = currentPlaying;
+      lastKnownState.position = currentTime;
+      return;
+    }
+
+    if (currentPlaying !== lastKnownState.playing) {
+      console.log("[POLL] play state change", currentPlaying ? "play" : "pause", "@", currentTime);
+      wsSend(currentPlaying ? "play" : "pause", { position: currentTime });
+      lastKnownState.playing = currentPlaying;
+      lastKnownState.position = currentTime;
+      return;
+    }
+
+    var diff = currentTime - lastKnownState.position;
+    lastKnownState.position = currentTime;
+    if (diff > 3.0 || diff < -3.0) {
+      console.log("[POLL] seek detected @", currentTime, "diff:", diff);
+      wsSend("seek", { position: currentTime, playing: currentPlaying });
+    }
+  } catch(e) {
+    console.log("[POLL] error:", e);
+  }
+}
+
+function startPoll() {
+  if (pollTimer) return;
+  console.log("[POLL] starting");
+  pollTimer = setInterval(pollPlayer, 200);
+}
+
+function stopPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function applyRemoteCommand(type, data) {
+  var p = data.payload || data;
+  if (!p || !vkPlayer) return;
+
+  console.log("[CMD] apply", type, JSON.stringify(p));
+  suppressCount = 4;
+
+  switch (type) {
+    case "sync":
+      var pos = p.position;
+      if (p.playing && p.updated_at) {
+        pos = Math.max(0, pos + (Date.now() - new Date(p.updated_at).getTime()) / 1000);
+      }
+      vkPlayer.seek(pos);
+      if (p.playing) { vkPlayer.play(); } else { vkPlayer.pause(); }
+      lastKnownState = { playing: !!p.playing, position: pos };
+      break;
+    case "play":
+      vkPlayer.seek(p.position);
+      vkPlayer.play();
+      lastKnownState = { playing: true, position: p.position };
+      break;
+    case "pause":
+      vkPlayer.seek(p.position);
+      vkPlayer.pause();
+      lastKnownState = { playing: false, position: p.position };
+      break;
+    case "seek":
+      vkPlayer.seek(p.position);
+      if (p.playing === true) {
+        vkPlayer.play();
+        lastKnownState = { playing: true, position: p.position };
+      } else if (p.playing === false) {
+        vkPlayer.pause();
+        lastKnownState = { playing: false, position: p.position };
+      } else {
+        lastKnownState.position = p.position;
+      }
+      break;
+  }
+}
 
 async function checkAuth() {
   try {
@@ -62,10 +165,58 @@ function setPlaceholder(html) {
 }
 
 function showVideo(url) {
+  stopPoll();
+  if (vkPlayer) {
+    try { vkPlayer.destroy(); } catch(e) {}
+    vkPlayer = null;
+  }
+  lastKnownState = { playing: false, position: 0 };
+  suppressCount = 0;
+
   var decoded = decodeURIComponent(url);
-  document.getElementById("room-player").src = decoded;
-  document.getElementById("room-player").style.display = "block";
+  var iframe = document.getElementById("room-player");
+
+  try {
+    var u = new URL(decoded);
+    if (u.hostname.indexOf("vk") !== -1 && !u.searchParams.has("js_api")) {
+      u.searchParams.set("js_api", "1");
+      decoded = u.toString();
+    }
+  } catch (e) {}
+
+  iframe.src = decoded;
+  iframe.style.display = "block";
   document.getElementById("room-placeholder").style.display = "none";
+
+  iframe.addEventListener("load", function initVK() {
+    iframe.removeEventListener("load", initVK);
+    initPlayer();
+  });
+}
+
+function initPlayer() {
+  if (!window.VK) {
+    setTimeout(initPlayer, 1000);
+    return;
+  }
+
+  var iframe = document.getElementById("room-player");
+  if (!iframe || !iframe.src) return;
+  if (vkPlayer) return;
+
+  try {
+    vkPlayer = VK.VideoPlayer(iframe);
+    console.log("[VK] player initialized");
+
+    if (pendingSync) {
+      applyRemoteCommand("sync", pendingSync);
+      pendingSync = null;
+    }
+
+    startPoll();
+  } catch (e) {
+    console.log("[VK] init error:", e);
+  }
 }
 
 function updateSourceName(name) {
@@ -97,15 +248,38 @@ function connectWS() {
 
   ws.onmessage = function(e) {
     var data = JSON.parse(e.data);
-    if (data.type === "source_changed") {
-      if (data.payload && data.payload.source_url) {
-        showVideo(data.payload.source_url);
-        refreshSourceName();
-      }
-      return;
+    console.log("[WS] recv", data.type, JSON.stringify(data.payload));
+
+    switch (data.type) {
+      case "sync":
+        pendingSync = data;
+        if (vkPlayer && data.payload) {
+          applyRemoteCommand("sync", data);
+        }
+        return;
+
+      case "play":
+      case "pause":
+      case "seek":
+        if (vkPlayer && data.payload) {
+          applyRemoteCommand(data.type, data);
+        }
+        return;
+
+      case "source_changed":
+        if (data.payload && data.payload.source_url) {
+          showVideo(data.payload.source_url);
+          refreshSourceName();
+        }
+        return;
+
+      case "chat":
+        if (data.payload) {
+          var type = data.username === currentUsername ? "me" : "other";
+          appendMessage(type, data.username, data.payload.text || "");
+        }
+        return;
     }
-    var type = data.username === currentUsername ? "me" : "other";
-    appendMessage(type, data.username, data.text);
   };
 
   ws.onclose = function() {
@@ -271,7 +445,8 @@ document.getElementById("room-chat-form").addEventListener("submit", function(e)
   var input = document.getElementById("room-chat-input");
   var text = input.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(JSON.stringify({ text: text }));
+  wsSend("chat", { text: text });
+  appendMessage("me", currentUsername, text);
   input.value = "";
 });
 
