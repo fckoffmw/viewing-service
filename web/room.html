@@ -37,8 +37,12 @@
     <div id="room-messages" class="room-messages"></div>
     <form id="room-chat-form" class="room-chat-form">
       <input id="room-chat-input" class="room-chat-input" type="text" placeholder="Сообщение..." maxlength="500" autocomplete="off">
+      <button id="room-chat-stickers" class="room-chat-stickers">😀</button>
       <button id="room-chat-send" class="room-chat-send" type="submit">→</button>
     </form>
+    <div id="room-chat-sticker-panel" class="room-chat-sticker-panel hidden">
+        <div class="room-chat-sticker-grid"></div>
+    </div>
   </div>
 
 <div class="modal-overlay" id="source-modal" style="display:none" onclick="if(event.target===this)closeSourceModal()">
