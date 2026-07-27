@@ -21,7 +21,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: url('/static/img/wall.png');
+  background: url('/img/wall.png');
   z-index: -1;
   pointer-events: none;
 }
