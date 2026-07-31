@@ -11,7 +11,7 @@ import (
 
 type Service interface {
 	GetAll() ([]Source, error)
-	Add(name, url string) (string, error)
+	Add(name, strWithURL string) (string, error)
 	Update(id, name, url string) error
 	Delete(id string) error
 }

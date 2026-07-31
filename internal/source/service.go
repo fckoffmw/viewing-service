@@ -1,6 +1,9 @@
 package source
 
-import "fmt"
+import (
+	"fmt"
+	"w2g/internal/utils/str"
+)
 
 type repository interface {
 	GetAllSources() ([]Source, error)
@@ -30,10 +33,16 @@ func (s *service) GetAll() ([]Source, error) {
 }
 
 func (s *service) Add(name, url string) (string, error) {
+	url, err := str.ExtractURLFromIframeTag(url)
+	if err != nil {
+		return "", fmt.Errorf("validating url: %w", err)
+	}
+
 	id, err := s.repo.AddSource(&Source{
 		Name: name,
 		URL:  url,
 	})
+
 	if err != nil {
 		return "", fmt.Errorf("add source: %w", err)
 	}

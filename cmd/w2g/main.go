@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"w2g/internal/auth"
-	"w2g/internal/realtime"
 	"w2g/internal/config"
 	router "w2g/internal/http"
+	"w2g/internal/realtime"
 	"w2g/internal/repo"
 	"w2g/internal/room"
 	"w2g/internal/source"
