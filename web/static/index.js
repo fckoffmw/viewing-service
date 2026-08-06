@@ -3,6 +3,8 @@ var currentUsername = ''
 var roomContainer = document.getElementById('rooms-container');
 var rooms = []
 
+const ROOMS_POLLING_INTERVAL = 10000 // in ms
+
 roomContainer.addEventListener('click', function(event) {
     if (event.target.classList.contains('btn-delete-room')) {
     var code = event.target.getAttribute('data-code');
@@ -17,15 +19,22 @@ checkAuth()
 
 async function checkAuth() {
     try {
-    var res = await fetch('/auth/me')
-    if (!res.ok) { window.location.href = '/login.html'; return }
-    var user = await res.json()
-    currentUserId = user.id
-    currentUsername = user.username
-    document.getElementById('nav-username').textContent = user.username
-    loadRooms()
+        var res = await fetch('/auth/me')
+        if (!res.ok) { window.location.href = '/login.html'; return }
+        var user = await res.json()
+        currentUserId = user.id
+        currentUsername = user.username
+        document.getElementById('nav-username').textContent = user.username
+        while (true) {
+            loadRooms() 
+            await new Promise(r => setTimeout(r, ROOMS_POLLING_INTERVAL));
+            if (document.hidden) {
+                return
+            }
+        }
+
     } catch {
-    window.location.href = '/login.html'
+        window.location.href = '/login.html'
     }
 }
 
@@ -39,12 +48,12 @@ async function loadRooms() {
     roomContainer.innerHTML = '<div class="empty">Загрузка...</div>'
 
     try {
-    var res = await fetch('/api/rooms')
-    if (!res.ok) { roomContainer.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
-    rooms = await res.json()
-    renderRooms(rooms)
+        var res = await fetch('/api/rooms')
+        if (!res.ok) { roomContainer.innerHTML = '<div class="empty">Ошибка загрузки</div>'; return }
+        rooms = await res.json()
+        renderRooms(rooms)
     } catch {
-    roomContainer.innerHTML = '<div class="empty">Ошибка соединения</div>'
+        roomContainer.innerHTML = '<div class="empty">Ошибка соединения</div>'
     }
 }
 

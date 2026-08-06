@@ -473,4 +473,44 @@ window.addEventListener("DOMContentLoaded", async function() {
 
   await loadRoom();
   connectWS();
+
+//   function loadStickers() {
+//     const stickerModules = import.meta.glob('/static/assets/stickers/*.{png,jpg,webp,svg}', { eager: true });
+//     const grid = document.querySelector('.room-chat-sticker-grid');
+    
+//     Object.values(stickerModules).forEach((module) => {
+//         const img = document.createElement('img');
+//         img.src = module.default;
+//         img.alt = 'sticker';
+//         img.onclick = function() {
+//             sendSticker(module.default);
+//         };
+//         grid.appendChild(img);
+//     });
+// }
+
+//   function sendSticker(url) {
+//       if (!ws || ws.readyState !== WebSocket.OPEN) return;
+//       wsSend('chat', { text: url });
+//       appendMessage('me', currentUsername, url);
+//   }
+
+//   // Обработчик кнопки
+//   document.getElementById('room-chat-stickers').onclick = function(e) {
+//       e.preventDefault();
+//       var panel = document.getElementById('room-chat-sticker-panel');
+//       panel.classList.toggle('hidden');
+//       if (!panel.classList.contains('hidden') && panel.querySelector('.room-chat-sticker-grid').children.length === 0) {
+//           loadStickers();
+//       }
+//   };
+// });
+
+// // --- close sticker panel when clicking outside ---
+// document.addEventListener('click', function(e) {
+//     var panel = document.getElementById('room-chat-sticker-panel');
+//     var btn = document.getElementById('room-chat-stickers');
+//     if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) {
+//         panel.classList.add('hidden');
+//     }
 });

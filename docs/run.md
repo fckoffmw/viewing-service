@@ -21,6 +21,9 @@ go run ./cmd/w2g
 
 # Dev-прокси (опционально, для разработки фронта)
 go run ./cmd/web -dir ./web -backend http://localhost:8080
+
+ # Vite front
+npm run dev
 ```
 
 Сервис доступен на `http://localhost:8080`
