@@ -11,6 +11,8 @@ var suppressCount = 0;
 var lastKnownState = { playing: false, position: 0 };
 var pendingSync = null;
 
+const MEMBERS_ONLINE_POLLING_INTERVAL = 10000 // in ms
+
 window.addEventListener("beforeunload", function () {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
@@ -244,6 +246,8 @@ function connectWS() {
     setStatus("online");
     appendMessage("system", "", "Подключились");
     fetchMembers();
+
+    setInterval(fetchMembers, MEMBERS_ONLINE_POLLING_INTERVAL);
   };
 
   ws.onmessage = function(e) {
