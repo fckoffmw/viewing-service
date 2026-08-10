@@ -13,6 +13,15 @@ var pendingSync = null;
 
 const MEMBERS_ONLINE_POLLING_INTERVAL = 10000 // in ms
 
+const STICKER_MODULES = import.meta.glob('/static/assets/stickers/**/*.{png,webp,jpg,gif}');
+const STICKER_PATHS = Object.keys(STICKER_MODULES);
+const STICKER_COUNT = STICKER_PATHS.length;
+
+const STICKER_BTN = document.getElementById("room-chat-stickers-btn");
+const STICKER_PANEL = document.getElementById("room-chat-sticker-panel");
+const STICKER_GRID = STICKER_PANEL.querySelector("room-chat-sticker-grid");
+
+
 window.addEventListener("beforeunload", function () {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
 
@@ -361,11 +370,20 @@ document.addEventListener("click", function(e) {
   if (menu.classList.contains("open") && !btn.contains(e.target) && !menu.contains(e.target)) {
     menu.classList.remove("open");
   }
+
+  if (STICKER_PANEL.classList.contains("open") && !STICKER_BTN.contains(e.target) && !STICKER_PANEL.contains(e.target)) {
+    STICKER_PANEL.classList.remove("open");
+  }
 });
 
 document.getElementById("room-menu-btn").addEventListener("click", function(e) {
   e.stopPropagation();
   document.getElementById("room-header-menu").classList.toggle("open");
+});
+
+STICKER_BTN.addEventListener("click", function(e) {
+  e.stopPropagation();
+  STICKER_PANEL.classList.toggle("open");
 });
 
 function copyLink() {
@@ -478,43 +496,5 @@ window.addEventListener("DOMContentLoaded", async function() {
   await loadRoom();
   connectWS();
 
-//   function loadStickers() {
-//     const stickerModules = import.meta.glob('/static/assets/stickers/*.{png,jpg,webp,svg}', { eager: true });
-//     const grid = document.querySelector('.room-chat-sticker-grid');
-    
-//     Object.values(stickerModules).forEach((module) => {
-//         const img = document.createElement('img');
-//         img.src = module.default;
-//         img.alt = 'sticker';
-//         img.onclick = function() {
-//             sendSticker(module.default);
-//         };
-//         grid.appendChild(img);
-//     });
-// }
 
-//   function sendSticker(url) {
-//       if (!ws || ws.readyState !== WebSocket.OPEN) return;
-//       wsSend('chat', { text: url });
-//       appendMessage('me', currentUsername, url);
-//   }
-
-//   // Обработчик кнопки
-//   document.getElementById('room-chat-stickers').onclick = function(e) {
-//       e.preventDefault();
-//       var panel = document.getElementById('room-chat-sticker-panel');
-//       panel.classList.toggle('hidden');
-//       if (!panel.classList.contains('hidden') && panel.querySelector('.room-chat-sticker-grid').children.length === 0) {
-//           loadStickers();
-//       }
-//   };
-// });
-
-// // --- close sticker panel when clicking outside ---
-// document.addEventListener('click', function(e) {
-//     var panel = document.getElementById('room-chat-sticker-panel');
-//     var btn = document.getElementById('room-chat-stickers');
-//     if (!panel.classList.contains('hidden') && !panel.contains(e.target) && e.target !== btn) {
-//         panel.classList.add('hidden');
-//     }
 });

@@ -727,6 +727,7 @@ body::before {
 }
 
 .room-chat-form {
+  position: relative;
   display: flex;
   border-top: 1px solid #222;
   flex-shrink: 0;
@@ -747,7 +748,7 @@ body::before {
   color: #555;
 }
 
-.room-chat-send {
+.room-chat-send-btn {
   padding: 12px 16px;
   background: none;
   border: none;
@@ -758,16 +759,16 @@ body::before {
   transition: color 0.15s;
 }
 
-.room-chat-send:hover {
+.room-chat-send-btn:hover {
   color: #e5e5e5;
 }
 
-.room-chat-send:disabled {
+.room-chat-send-btn:disabled {
   opacity: 0.3;
   cursor: default;
 }
 
-.room-chat-stickers {
+.room-chat-stickers-btn {
   padding: 12px 16px;
   background: none;
   border: none;
@@ -778,11 +779,11 @@ body::before {
   transition: color 0.15s;
 }
 
-.room-chat-stickers:hover {
+.room-chat-stickers-btn:hover {
   color: #e5e5e5;
 }
 
-.room-chat-stickers:disabled {
+.room-chat-stickers-btn:disabled {
   opacity: 0.3;
   cursor: default;
 }
@@ -909,4 +910,40 @@ body::before {
   border-radius: 100% 0 100% 0;
   background: linear-gradient(135deg, #ffcdd2 0%, #f8bbd9 50%, #fce4ec 100%);
   box-shadow: 0 0 10px rgba(255, 192, 203, 0.5);
+}
+
+.room-chat-sticker-panel {
+  display: none;
+  position: absolute;
+  bottom: 100%; 
+  margin-bottom: 8px;
+  right: 8px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 4px;
+  z-index: 20;
+  min-width: 180px;
+}
+
+.room-chat-sticker-panel.open {
+  display: grid;
+}
+
+.room-chat-sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); 
+  gap: 6px;
+}
+
+.room-chat-sticker-item {
+  width: 40px;        
+  height: 40px;       
+  object-fit: contain; 
+  cursor: pointer;    
+  transition: transform 0.1s ease; 
+}
+
+.room-chat-sticker-item:hover {
+  transform: scale(1.1); 
 }

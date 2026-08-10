@@ -37,12 +37,20 @@
     <div id="room-messages" class="room-messages"></div>
     <form id="room-chat-form" class="room-chat-form">
       <input id="room-chat-input" class="room-chat-input" type="text" placeholder="Сообщение..." maxlength="500" autocomplete="off">
-      <button id="room-chat-stickers" class="room-chat-stickers">😀</button>
-      <button id="room-chat-send" class="room-chat-send" type="submit">→</button>
+      <button id="room-chat-stickers-btn" class="room-chat-stickers-btn">☻</button>
+      <button id="room-chat-send-btn" class="room-chat-send-btn" type="submit">→</button>
+
+      <div id="room-chat-sticker-panel" class="room-chat-sticker-panel">
+        <div class="room-chat-sticker-grid">
+          <img src="static/assets/stickers/0.webp" class="room-chat-sticker-item">
+          <img src="static/assets/stickers/1.webp" class="room-chat-sticker-item">
+          <img src="static/assets/stickers/2.webp" class="room-chat-sticker-item">
+          <img src="static/assets/stickers/3.webp" class="room-chat-sticker-item">
+          <img src="static/assets/stickers/4.webp" class="room-chat-sticker-item">
+          <img src="static/assets/stickers/5.webp" class="room-chat-sticker-item">
+        </div>
+      </div>
     </form>
-    <div id="room-chat-sticker-panel" class="room-chat-sticker-panel hidden">
-        <div class="room-chat-sticker-grid"></div>
-    </div>
   </div>
 
 <div class="modal-overlay" id="source-modal" style="display:none" onclick="if(event.target===this)closeSourceModal()">
@@ -54,7 +62,7 @@
     </div>
   </div>
 </div>
-<script src="/room.js"></script>
+<script type="module" src="/static/room.js"></script>
 
 </body>
 </html>
