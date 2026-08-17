@@ -19,8 +19,25 @@ const STICKER_COUNT = STICKER_PATHS.length;
 
 const STICKER_BTN = document.getElementById("room-chat-stickers-btn");
 const STICKER_PANEL = document.getElementById("room-chat-sticker-panel");
-const STICKER_GRID = STICKER_PANEL.querySelector("room-chat-sticker-grid");
+const STICKER_GRID = STICKER_PANEL.querySelector(".room-chat-sticker-grid");
 
+if (STICKER_GRID) {
+  STICKER_GRID.addEventListener("click", function (e) {
+    var sticker = e.target.closest(".room-chat-sticker-item");
+    if (!sticker) return;
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      if (typeof showToast === "function") showToast("Ошибка: нет соединения с сервером");
+      return;
+    }
+
+    var stickerID = sticker.getAttribute("data-id");
+
+    wsSend("sticker", { id: stickerID });
+
+  }
+)
+}
 
 window.addEventListener("beforeunload", function () {
   if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
