@@ -26,8 +26,14 @@ tasks:
     desc: "Build the application"
     cmds:
       - mkdir -p {{.BIN_DIR}}
+      - task: build:web
       - go build -o {{.BIN_DIR}}/web ./cmd/web
       - go build -o {{.BIN_DIR}}/w2g ./cmd/w2g
+
+  build:web:
+    desc: "Build frontend with Vite"
+    cmds:
+      - cd web && npm ci && npm run build && cp -r static dist/static
 
   run:web:
     desc: "Run the web server"

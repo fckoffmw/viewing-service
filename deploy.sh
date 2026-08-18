@@ -143,6 +143,15 @@ mkdir -p "$DEPLOY_ROOT/bin"
 log "Building w2g..."
 go build -o "$DEPLOY_ROOT/bin/$APP_NAME" ./cmd/w2g
 
+# build frontend
+if command -v npm >/dev/null 2>&1; then
+    log "Building frontend with Vite..."
+    (cd web && npm ci && npm run build && cp -r static dist/static)
+else
+    log "ERROR: npm not found, cannot build frontend"
+    exit 1
+fi
+
 # make config
 mkdir -p "$DEPLOY_ROOT/config"
 cat > "$DEPLOY_ROOT/config/.env" <<EOF
@@ -193,13 +202,13 @@ mkdir -p "$STORAGE_DIR"
 # deploy web
 log "Copying web files to artifacts ($DEPLOY_ROOT/web)..."
 mkdir -p "$DEPLOY_ROOT/web"
-cp -r web/* "$DEPLOY_ROOT/web"
+cp -r web/dist/* "$DEPLOY_ROOT/web"
 
 if [[ -n "$WEB_DIR" ]]; then
     log "Copying web files to $WEB_DIR..."
     mkdir -p "$WEB_DIR"
     rm -rf "${WEB_DIR:?}/"*
-    cp -r web/* "$WEB_DIR"
+    cp -r web/dist/* "$WEB_DIR"
     log "Web files deployed to $WEB_DIR"
 fi
 

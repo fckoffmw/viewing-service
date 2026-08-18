@@ -15,6 +15,7 @@ const (
 	MsgTypePause         = "pause"
 	MsgTypeSeek          = "seek"
 	MsgTypeSourceChanged = "source_changed"
+	MsgTypeSticker       = "sticker"
 
 	keySourceID  = "source_id"
 	keySourceURL = "source_url"
@@ -262,6 +263,49 @@ func (h *hub) handleEvent(evt incomingEvent) {
 			Type:    MsgTypeSourceChanged,
 			Payload: payload,
 		})
+
+	case MsgTypeSticker:
+		var payload stickerPayload
+		if err := json.Unmarshal(evt.Message.Payload, &payload); err != nil {
+			h.log.Debug("sticker: invalid payload", "err", err)
+
+			return
+		}
+
+		payload.StickerID = strings.TrimSpace(payload.StickerID)
+		if payload.StickerID == "" {
+
+			return
+		}
+
+		outgoing := outgoingMessage{
+			Type:     MsgTypeSticker,
+			Username: evt.Username,
+			Payload:  payload,
+		}
+
+		h.mu.Lock()
+		for client := range h.clients {
+			if client == evt.Sender {
+				continue
+			}
+
+			select {
+			case client.Send() <- outgoing:
+			default:
+				h.log.Warn("sticker: dropping slow client", "username", evt.Username)
+				delete(h.clients, client)
+				close(client.Send())
+			}
+		}
+		shouldShutdown := len(h.clients) == 0
+		h.mu.Unlock()
+
+		h.log.Debug("sticker broadcast done", "clients_remaining", len(h.clients))
+
+		if shouldShutdown {
+			h.shutdownOnEmpty()
+		}
 	}
 }
 

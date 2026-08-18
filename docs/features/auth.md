@@ -76,7 +76,7 @@ curl -v -X POST http://localhost:8080/auth/login \
 # Use cookie for protected request
 curl http://localhost:8080/api/sources -b cookies.txt
 ```
-Ожидается: `200` + `[]`
+Ожидается: `200` + `null` (пустой список) или `[{...}]` (при наличии источников)
 
 ### Валидация полей
 

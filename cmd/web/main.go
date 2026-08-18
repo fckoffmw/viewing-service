@@ -23,7 +23,7 @@ func (w *statusWriter) WriteHeader(code int) {
 }
 
 func main() {
-	dir := flag.String("dir", "./web", "directory to serve")
+	dir := flag.String("dir", "./web/dist", "directory to serve")
 	port := flag.String("port", "8081", "port to listen on")
 	backend := flag.String("backend", "http://localhost:8080", "backend URL to proxy API requests")
 	flag.Parse()

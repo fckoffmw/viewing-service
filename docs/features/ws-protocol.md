@@ -15,6 +15,7 @@ ws://localhost:8080/ws/{invite_code}
 { "type": "pause", "payload": { "position": 42.5 } }
 { "type": "seek",  "payload": { "position": 120.0 } }
 { "type": "chat",  "payload": { "text": "hello" } }
+{ "type": "sticker", "payload": { "id": "0" } }
 ```
 
 | type | Payload | Описание |
@@ -23,6 +24,7 @@ ws://localhost:8080/ws/{invite_code}
 | `pause` | `{ "position": float }` | Пауза на позиции |
 | `seek` | `{ "position": float }` | Перемотка на позицию |
 | `chat` | `{ "text": string }` | Чат-сообщение (макс 1000 символов) |
+| `sticker` | `{ "id": string }` | ID стикера |
 
 ## Исходящие сообщения (сервер → клиент)
 
@@ -57,11 +59,16 @@ ws://localhost:8080/ws/{invite_code}
 { "type": "chat", "username": "alice", "payload": { "text": "hello" } }
 ```
 
+### sticker — broadcast всем КРОМЕ отправителя
+```json
+{ "type": "sticker", "username": "alice", "payload": { "id": "0" } }
+```
+
 ## Ключевые правила
 
 1. **Сервер — источник истины.** Клиент шлёт намерение, сервер обновляет `State` и рассылает факт всем (включая отправителя).
 2. **sync** приходит в момент подключения — содержит снапшот текущего состояния комнаты.
-3. **chat** не идёт отправителю (остальные — всем).
+3. **chat** и **sticker** не идут отправителю (остальные — всем).
 4. **source_changed** приходит через HTTP-эндпоинт, затем проксируется в WS.
 5. **State (Position, Playing, UpdatedAt) in-memory**, не сохраняется в CSV.
 

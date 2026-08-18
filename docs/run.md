@@ -19,11 +19,14 @@ Dev-прокси (статика + прокси API/WS): `http://localhost:8081`
 # Backend
 go run ./cmd/w2g
 
-# Dev-прокси (опционально, для разработки фронта)
-go run ./cmd/web -dir ./web -backend http://localhost:8080
+# Frontend (сборка перед запуском dev-прокси)
+cd web && npm ci && npm run build
 
- # Vite front
-npm run dev
+# Dev-прокси (статика из web/dist + прокси API/WS)
+go run ./cmd/web -backend http://localhost:8080
+
+ # Vite dev (hot reload, для разработки фронта)
+cd web && npm run dev
 ```
 
 Сервис доступен на `http://localhost:8080`
@@ -41,6 +44,7 @@ docker compose up -d --build
 - Go 1.26+
 - nginx
 - systemd
+- Node.js + npm (сборка фронтенда Vite)
 
 ### Быстрый старт
 
