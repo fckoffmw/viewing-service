@@ -35,6 +35,8 @@ if (STICKER_GRID) {
 
     wsSend("sticker", { id: stickerID });
 
+    appendMessage("sticker", currentUsername, stickerID); // когда появится логика ws для "sticker" - удалить
+
   }
 )
 }
@@ -309,6 +311,11 @@ function connectWS() {
           appendMessage(type, data.username, data.payload.text || "");
         }
         return;
+
+      case "sticker":
+        if (data.payload) {
+          appendMessage("sticker", data.username, data.payload.id || "");
+        }
     }
   };
 
@@ -350,6 +357,22 @@ function appendMessage(type, username, text) {
   if (type === "system") {
     div.className = "room-msg system";
     div.textContent = text;
+  } else if (type === "sticker") {
+    div.className = "room-msg";
+
+    var color = getUserColor(username);
+    div.style.borderLeftColor = color;
+
+    var nameSpan = document.createElement("span");
+    nameSpan.className = "room-msg-username";
+    nameSpan.style.color = color;
+    nameSpan.textContent = username + ":";
+    
+    var img  = document.createElement("img");
+    img.src = "static/assets/stickers/" + text + ".webp";
+    img.className = "room-msg-sticker";
+    div.appendChild(nameSpan);
+    div.appendChild(img);
   } else {
     div.className = "room-msg";
 
@@ -366,7 +389,8 @@ function appendMessage(type, username, text) {
     textSpan.textContent = text;
     div.appendChild(nameSpan);
     div.appendChild(textSpan);
-  }
+  } 
+  
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }
