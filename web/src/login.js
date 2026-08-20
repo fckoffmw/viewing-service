@@ -1,3 +1,5 @@
+import './app.css'; 
+
 (async function checkAlreadyLogged() {
     try {
         var res = await fetch('/auth/me')

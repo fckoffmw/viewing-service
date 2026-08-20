@@ -1,3 +1,5 @@
+import './app.css'; 
+
 var currentUsername = "";
 var currentUserId = "";
 var inviteCode = "";
@@ -369,7 +371,7 @@ function appendMessage(type, username, text) {
     nameSpan.textContent = username + ":";
     
     var img  = document.createElement("img");
-    img.src = "static/assets/stickers/" + text + ".webp";
+    img.src = "public/assets/stickers/" + text + ".webp";
     img.className = "room-msg-sticker";
     div.appendChild(nameSpan);
     div.appendChild(img);
@@ -436,6 +438,7 @@ function copyLink() {
   });
   document.getElementById("room-header-menu").classList.remove("open");
 }
+window.copyLink = copyLink;
 
 function deleteRoom() {
   if (!confirm("Удалить комнату?")) return;
@@ -450,6 +453,7 @@ function deleteRoom() {
   });
   document.getElementById("room-header-menu").classList.remove("open");
 }
+window.deleteRoom = deleteRoom;
 
 // --- source modal ---
 function openSourceModal() {
@@ -457,6 +461,7 @@ function openSourceModal() {
   document.getElementById("source-modal").style.display = "flex";
   loadSourceList();
 }
+window.openSourceModal = openSourceModal;
 
 function closeSourceModal() {
   document.getElementById("source-modal").style.display = "none";
