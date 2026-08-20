@@ -425,6 +425,7 @@ document.getElementById("room-menu-btn").addEventListener("click", function(e) {
 });
 
 STICKER_BTN.addEventListener("click", function(e) {
+  if (e.detail === 0) return; 
   e.stopPropagation();
   STICKER_PANEL.classList.toggle("open");
 });
