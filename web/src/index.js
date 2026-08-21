@@ -42,7 +42,7 @@ async function logout() {
     await fetch('/auth/logout', { method: 'POST' })
     window.location.href = '/login.html'
 }
-
+window.logout = logout;
 // --- rooms ---
 async function loadRooms() {
     roomContainer.innerHTML = '<div class="empty">Загрузка...</div>'
@@ -104,11 +104,11 @@ function openCreateModal() {
     document.getElementById('room-name').value = ''
     document.getElementById('room-name').focus()
 }
-
+window.openCreateModal = openCreateModal;
 function closeCreateModal() {
     document.getElementById('create-modal').style.display = 'none'
 }
-
+window.closeCreateModal = closeCreateModal;
 async function handleCreate(e) {
     e.preventDefault()
     var name = document.getElementById('room-name').value.trim()
@@ -140,7 +140,7 @@ async function handleCreate(e) {
         btn.textContent = 'Создать'
     }
 }
-
+window.handleCreate = handleCreate;
 async function joinByCode() {
     var code = document.getElementById('join-code').value.trim().toUpperCase()
     if (!code) return
@@ -156,7 +156,7 @@ async function joinByCode() {
         alert('Ошибка соединения')
     }
 }
-
+window.joinByCode = joinByCode;
 async function deleteRoom(code) {
     var delRoom = rooms.find(function (r) {
         return r.invite_code === code

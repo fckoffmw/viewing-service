@@ -700,7 +700,9 @@ body::before {
 
 .room-msg {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
   padding: 2px 0 2px 8px;
   font-size: 14px;
   line-height: 1.5;
@@ -713,25 +715,48 @@ body::before {
   font-style: italic;
   font-size: 12px;
   padding: 4px 0;
+  display: block;
 }
 
-.room-msg-header {
+.room-msg-main {
   display: flex;
-  align-items: flex-start;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   border-left: 3px solid transparent;
   padding-left: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.room-msg-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.room-msg.sticker .room-msg-row {
+  align-items: flex-start;
 }
 
 .room-msg-username {
   font-weight: 600;
   white-space: nowrap;
-  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .room-msg-text {
   color: #ccc;
   min-width: 0;
+  word-break: break-word;
+}
+
+.room-msg-sticker {
+  max-width: 130px;
+  max-height: 130px;
+  display: block;
 }
 
 .room-chat-form {
@@ -1028,30 +1053,14 @@ body::before {
   scrollbar-width: thin;
   scrollbar-color: #3a3a3a transparent;
 }
-
-.room-msg-sticker {
-  max-width: 120px;
-  max-height: 120px;
-  display: block;
-  margin-top: 5px;
-}
-
-.room-msg-content {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 2px;
-  padding-left: 6px;
+.room-chat-sticker-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3a3a transparent;
 }
 
 .room-msg-time {
   font-size: 11px;
-  align-self: flex-end;
-  margin-top: 4px;
   font-weight: 400;
   opacity: 0.8;
-}
-
-.room-msg.system .room-msg-time {
-  display: none;
+  flex-shrink: 0;
 }

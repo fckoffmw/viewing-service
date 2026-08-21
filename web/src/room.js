@@ -357,77 +357,52 @@ function appendMessage(type, username, text) {
 
   var now = new Date();
   var timeString = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  
-  var timeSpan = document.createElement("span");
-  timeSpan.className = "room-msg-time";
-  timeSpan.textContent = timeString;
-  
+
   if (type === "system") {
     div.className = "room-msg system";
     div.textContent = text;
-    div.appendChild(timeSpan);
-  } else if (type === "sticker") {
-    div.className = "room-msg";
-
-    var color = getUserColor(username);
-    
-    var headerDiv = document.createElement("div");
-    headerDiv.className = "room-msg-header";
-    headerDiv.style.borderLeftColor = color;
-
-    var nameSpan = document.createElement("span");
-    nameSpan.className = "room-msg-username";
-    nameSpan.style.color = color;
-    nameSpan.textContent = username + ":";
-    
-    var img  = document.createElement("img");
-    img.src = "public/assets/stickers/" + text + ".webp";
-    img.className = "room-msg-sticker";
-    
-    headerDiv.appendChild(nameSpan);
-    headerDiv.appendChild(img);
-    
-    var contentWrapper = document.createElement("div");
-    contentWrapper.className = "room-msg-content";
-    
-    var timeSpanClone = timeSpan.cloneNode(true);
-    timeSpanClone.style.color = color;
-    contentWrapper.appendChild(timeSpanClone);
-    
-    div.appendChild(headerDiv);
-    div.appendChild(contentWrapper);
   } else {
-    div.className = "room-msg";
-
     var color = getUserColor(username);
-    
-    var headerDiv = document.createElement("div");
-    headerDiv.className = "room-msg-header";
-    headerDiv.style.borderLeftColor = color;
 
-    var nameSpan = document.createElement("span");
-    nameSpan.className = "room-msg-username";
-    nameSpan.style.color = color;
-    nameSpan.textContent = username + ":";
-    
-    var textSpan = document.createElement("span");
-    textSpan.className = "room-msg-text";
-    textSpan.textContent = text;
-    
-    headerDiv.appendChild(nameSpan);
-    headerDiv.appendChild(textSpan);
-    
-    var contentWrapper = document.createElement("div");
-    contentWrapper.className = "room-msg-content";
-    
-    var timeSpanClone = timeSpan.cloneNode(true);
-    timeSpanClone.style.color = color;
-    contentWrapper.appendChild(timeSpanClone);
-    
-    div.appendChild(headerDiv);
-    div.appendChild(contentWrapper);
-  } 
-  
+    var main = document.createElement("div");
+    main.className = "room-msg-main";
+    main.style.borderLeftColor = color;
+
+    var name = document.createElement("span");
+    name.className = "room-msg-username";
+    name.style.color = color;
+    name.textContent = username + ":";
+
+    var content = document.createElement("span");
+    content.className = "room-msg-text";
+
+    if (type === "sticker") {
+      var img = document.createElement("img");
+      img.src = "public/assets/stickers/" + text + ".webp";
+      img.className = "room-msg-sticker";
+      content.appendChild(img);
+      div.className = "room-msg sticker";
+    } else {
+      div.className = "room-msg";
+      content.textContent = text;
+    }
+
+    var row = document.createElement("div");
+    row.className = "room-msg-row";
+
+    row.appendChild(name);
+    row.appendChild(content);
+    main.appendChild(row);
+
+    var time = document.createElement("span");
+    time.className = "room-msg-time";
+    time.style.color = color;
+    time.textContent = timeString;
+
+    div.appendChild(main);
+    div.appendChild(time);
+  }
+
   el.appendChild(div);
   el.scrollTop = el.scrollHeight;
 }
