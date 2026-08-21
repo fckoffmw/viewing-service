@@ -95,11 +95,11 @@ function openAddModal() {
     document.getElementById("source-url").value = "";
     document.getElementById("source-name").focus();
 }
-
+window.openAddModal = openAddModal;
 function closeAddModal() {
     document.getElementById("add-modal").style.display = "none";
 }
-
+window.closeAddModal = closeAddModal;
 document.getElementById("add-form").addEventListener("submit", async function(e) {
     e.preventDefault();
     var name = document.getElementById("source-name").value.trim();
