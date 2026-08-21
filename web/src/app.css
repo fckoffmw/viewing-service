@@ -700,20 +700,27 @@ body::before {
 
 .room-msg {
   display: flex;
-  gap: 6px;
+  flex-direction: column;
   padding: 2px 0 2px 8px;
   font-size: 14px;
   line-height: 1.5;
   word-break: break-word;
-  border-left: 3px solid transparent;
 }
 
 .room-msg.system {
-  justify-content: center;
+  text-align: center;
   color: #555;
   font-style: italic;
   font-size: 12px;
   padding: 4px 0;
+}
+
+.room-msg-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  border-left: 3px solid transparent;
+  padding-left: 6px;
 }
 
 .room-msg-username {
@@ -1025,6 +1032,26 @@ body::before {
 .room-msg-sticker {
   max-width: 120px;
   max-height: 120px;
-  display: block; /* чтобы картинка аккуратно вставала под ником или рядом */
+  display: block;
   margin-top: 5px;
+}
+
+.room-msg-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+  padding-left: 6px;
+}
+
+.room-msg-time {
+  font-size: 11px;
+  align-self: flex-end;
+  margin-top: 4px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.room-msg.system .room-msg-time {
+  display: none;
 }

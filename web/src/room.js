@@ -354,14 +354,26 @@ async function refreshSourceName() {
 function appendMessage(type, username, text) {
   var el = document.getElementById("room-messages");
   var div = document.createElement("div");
+
+  var now = new Date();
+  var timeString = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  
+  var timeSpan = document.createElement("span");
+  timeSpan.className = "room-msg-time";
+  timeSpan.textContent = timeString;
+  
   if (type === "system") {
     div.className = "room-msg system";
     div.textContent = text;
+    div.appendChild(timeSpan);
   } else if (type === "sticker") {
     div.className = "room-msg";
 
     var color = getUserColor(username);
-    div.style.borderLeftColor = color;
+    
+    var headerDiv = document.createElement("div");
+    headerDiv.className = "room-msg-header";
+    headerDiv.style.borderLeftColor = color;
 
     var nameSpan = document.createElement("span");
     nameSpan.className = "room-msg-username";
@@ -371,13 +383,27 @@ function appendMessage(type, username, text) {
     var img  = document.createElement("img");
     img.src = "public/assets/stickers/" + text + ".webp";
     img.className = "room-msg-sticker";
-    div.appendChild(nameSpan);
-    div.appendChild(img);
+    
+    headerDiv.appendChild(nameSpan);
+    headerDiv.appendChild(img);
+    
+    var contentWrapper = document.createElement("div");
+    contentWrapper.className = "room-msg-content";
+    
+    var timeSpanClone = timeSpan.cloneNode(true);
+    timeSpanClone.style.color = color;
+    contentWrapper.appendChild(timeSpanClone);
+    
+    div.appendChild(headerDiv);
+    div.appendChild(contentWrapper);
   } else {
     div.className = "room-msg";
 
     var color = getUserColor(username);
-    div.style.borderLeftColor = color;
+    
+    var headerDiv = document.createElement("div");
+    headerDiv.className = "room-msg-header";
+    headerDiv.style.borderLeftColor = color;
 
     var nameSpan = document.createElement("span");
     nameSpan.className = "room-msg-username";
@@ -387,8 +413,19 @@ function appendMessage(type, username, text) {
     var textSpan = document.createElement("span");
     textSpan.className = "room-msg-text";
     textSpan.textContent = text;
-    div.appendChild(nameSpan);
-    div.appendChild(textSpan);
+    
+    headerDiv.appendChild(nameSpan);
+    headerDiv.appendChild(textSpan);
+    
+    var contentWrapper = document.createElement("div");
+    contentWrapper.className = "room-msg-content";
+    
+    var timeSpanClone = timeSpan.cloneNode(true);
+    timeSpanClone.style.color = color;
+    contentWrapper.appendChild(timeSpanClone);
+    
+    div.appendChild(headerDiv);
+    div.appendChild(contentWrapper);
   } 
   
   el.appendChild(div);
