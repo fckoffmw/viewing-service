@@ -21,7 +21,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: url('public/img/wall.png');
+  background: url('/public/img/wall.png');
   z-index: -1;
   pointer-events: none;
   filter: brightness(0.4);

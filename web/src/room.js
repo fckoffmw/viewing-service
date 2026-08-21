@@ -1,5 +1,3 @@
-import './app.css'; 
-
 var currentUsername = "";
 var currentUserId = "";
 var inviteCode = "";

@@ -1,5 +1,3 @@
-import './app.css'; 
-
 var currentUserId = ''
 var currentUsername = ''
 var roomContainer = document.getElementById('rooms-container');
