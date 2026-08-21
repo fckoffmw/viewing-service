@@ -721,21 +721,11 @@ body::before {
 .room-msg-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   border-left: 3px solid transparent;
   padding-left: 6px;
   flex: 1;
   min-width: 0;
-}
-
-.room-msg-row {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.room-msg.sticker .room-msg-row {
-  align-items: flex-start;
 }
 
 .room-msg-username {
@@ -743,13 +733,11 @@ body::before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-shrink: 1;
-  min-width: 0;
+  max-width: 100%;
 }
 
 .room-msg-text {
   color: #ccc;
-  min-width: 0;
   word-break: break-word;
 }
 
@@ -757,6 +745,7 @@ body::before {
   max-width: 130px;
   max-height: 130px;
   display: block;
+  margin-top: 4px;
 }
 
 .room-chat-form {

@@ -373,32 +373,26 @@ function appendMessage(type, username, text) {
     name.style.color = color;
     name.textContent = username + ":";
 
-    var content = document.createElement("span");
-    content.className = "room-msg-text";
+    main.appendChild(name);
 
     if (type === "sticker") {
       var img = document.createElement("img");
       img.src = "public/assets/stickers/" + text + ".webp";
       img.className = "room-msg-sticker";
-      content.appendChild(img);
-      div.className = "room-msg sticker";
+      main.appendChild(img);
     } else {
-      div.className = "room-msg";
+      var content = document.createElement("span");
+      content.className = "room-msg-text";
       content.textContent = text;
+      main.appendChild(content);
     }
-
-    var row = document.createElement("div");
-    row.className = "room-msg-row";
-
-    row.appendChild(name);
-    row.appendChild(content);
-    main.appendChild(row);
 
     var time = document.createElement("span");
     time.className = "room-msg-time";
     time.style.color = color;
     time.textContent = timeString;
 
+    div.className = "room-msg";
     div.appendChild(main);
     div.appendChild(time);
   }
