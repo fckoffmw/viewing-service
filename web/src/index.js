@@ -97,7 +97,7 @@ function copyInvite(code) {
     showToast('Ссылка скопирована')
     })
 }
-
+window.copyInvite = copyInvite;
 // --- create room ---
 function openCreateModal() {
     document.getElementById('create-modal').style.display = 'flex'
