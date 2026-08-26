@@ -24,6 +24,10 @@ type sourceChangedPayload struct {
 	SourceURL string `json:"source_url"`
 }
 
+type stickerPayload struct {
+	StickerID string `json:"id"`
+}
+
 func newSyncPayload(s state) syncPayload {
 	return syncPayload(s)
 }

@@ -15,7 +15,7 @@
 | Компонент | Технология |
 |-----------|------------|
 | Backend | Go 1.26+ |
-| Frontend | HTML, CSS, JS (vanilla) |
+| Frontend | HTML, CSS, JS (vanilla) + Vite |
 | Хранилище | CSV файлы |
 | Сессии | in-memory |
 | Task | Taskfile |

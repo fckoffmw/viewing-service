@@ -11,7 +11,7 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
                                                                                 └── API (/api/*)
 ```
 
-Статика (HTML, CSS, JS) раздаётся через nginx (production) или `cmd/web` (dev-прокси).
+Статика (HTML, CSS, JS) собирается Vite в `web/dist` и раздаётся через nginx (production) или `cmd/web` (dev-прокси).
 
 ## Taskfile
 
@@ -23,7 +23,8 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 | `task stop` | Остановка всех сервисов |
 | `task test` | Тесты |
 | `task lint` | Линтер |
-| `task build` | Сборка бинарников |
+| `task build` | Сборка бинарников и фронтенда (Vite → `web/dist`) |
+| `task build:web` | Только сборка фронтенда (Vite → `web/dist`) |
 
 Все сервисы запускаются через `nohup`, PID сохраняются в `.task/pids/`, логи в `.task/logs/`.
 
@@ -48,13 +49,13 @@ cmd/w2g/main.go ──→ HTTP Server ──→ middleware.Logging ──→ mid
 
 ### logging
 
-- Генерирует `request_id` (8 символов UUID)
+- Генерирует `request_id` (первые 8 символов UUID)
 - Добавляет заголовок `X-Request-ID` в ответ
 - Логирует: method, path, status, duration
 
 ### auth
 
-- Пропускает публичные пути: `/auth/*`, `/healthz`, `/ws/*`, `/static/*`, `/`
+- Пропускает публичные пути: `/`, `/index.html`, `/login.html`, `/register.html`, `/login`, `/register`, `/auth/login`, `/auth/register`, `/auth/logout`, `/auth/me`, `/healthz` + префиксы `/static/`, `/demo/`, `/ws/`
 - Для защищённых маршрутов проверяет `session_id` cookie
 - Sliding expiry: обновляет `ExpiresAt` при каждом запросе
 - Устанавливает `user_id` в контекст запроса

@@ -321,7 +321,7 @@
 
 ### X-Request-ID
 
-Идентификатор запроса (8 символов UUID) для трейсинга. Добавляется в каждый ответ.
+Идентификатор запроса (первые 8 символов UUID) для трейсинга. Добавляется в каждый ответ.
 
 ---
 
@@ -349,10 +349,11 @@
 #### Входящие (клиент → сервер)
 
 ```json
-{"type": "chat",  "payload": {"text": "hello"}}
-{"type": "play",  "payload": {"position": 42.5}}
-{"type": "pause", "payload": {"position": 42.5}}
-{"type": "seek",  "payload": {"position": 120.0}}
+{"type": "chat",    "payload": {"text": "hello"}}
+{"type": "play",    "payload": {"position": 42.5}}
+{"type": "pause",   "payload": {"position": 42.5}}
+{"type": "seek",    "payload": {"position": 120.0}}
+{"type": "sticker", "payload": {"id": "0"}}
 ```
 
 #### Исходящие (сервер → клиент)
@@ -361,6 +362,7 @@
 |------|----------|---------|------|
 | `sync` | — | `{"source_id":"...","source_url":"...","playing":true,"position":0.0,"updated_at":"..."}` | только новому клиенту |
 | `chat` | `username` | `{"text":"..."}` | всем, кроме отправителя |
+| `sticker` | `username` | `{"id":"0"}` | всем, кроме отправителя |
 | `play` | `username` | `{"position":42.5}` | всем |
 | `pause` | `username` | `{"position":42.5}` | всем |
 | `seek` | `username` | `{"position":120.0}` | всем |
@@ -368,8 +370,8 @@
 
 #### Правила
 
-- `username` заполнен для `chat`, `play`, `pause`, `seek`; отсутствует для `sync` и `source_changed`.
-- `chat` не идёт отправителю (остальные — всем).
+- `username` заполнен для `chat`, `sticker`, `play`, `pause`, `seek`; отсутствует для `sync` и `source_changed`.
+- `chat` и `sticker` не идут отправителю (остальные — всем).
 - Чат: текст обрезается до 1000 символов.
 - `source_changed` приходит через `PATCH /api/rooms/{invite_code}/source` и проксируется в WS (отправитель не указан).
 - `play`, `pause`, `seek` доступны любому аутентифицированному участнику комнаты.
