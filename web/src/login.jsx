@@ -10,7 +10,7 @@ const LoginPage = () => {
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const isButtonLoad = isLoading ? 'Вход...' : 'Войти'
+    const buttonText = isLoading ? 'Вход...' : 'Войти'
 
     const handleUsernameChange = (e) => {
         setUsername(e.target.value)
@@ -49,7 +49,7 @@ const LoginPage = () => {
         <AuthLayout onSubmit={handleSubmit} error={error} title="Вход" id="login-form" footer={<AuthSwitch question="Ещё нет аккаунта?" href="/register.html" text="Регистрация" />}>
             <AuthInput value={username} onChange={handleUsernameChange} type="text" id="username" placeholder="Имя пользователя" minLength={3} autoComplete="username" />
             <AuthInput value={password} onChange={handlePasswordChange} type="password" id="password" placeholder="Пароль" minLength={4} autoComplete="current-password" />
-            <AuthButton text={isButtonLoad} isLoading={isLoading} />
+            <AuthButton text={buttonText} isLoading={isLoading} />
         </AuthLayout>
     )
 }
