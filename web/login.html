@@ -7,21 +7,10 @@
   <link rel="stylesheet" href="/src/app.css">
 </head>
 <body>
-  <nav class="auth-nav">
-    <a href="/">w2g</a>
-  </nav>
 
-  <div class="auth-form">
-    <h1>Вход</h1>
-    <form id="login-form">
-      <input type="text" id="username" placeholder="Имя пользователя" required minlength="3" autocomplete="username" class="auth-input">
-      <input type="password" id="password" placeholder="Пароль" required minlength="4" autocomplete="current-password" class="auth-input">
-      <button type="submit" class="auth-btn">Войти</button>
-    </form>
-    <div id="error" class="auth-error"></div>
-    <p class="auth-switch">Нет аккаунта? <a href="/register.html">Регистрация</a></p>
-  </div>
+  <div id="root"></div>
 
-  <script type="module" src="/src/login.js"></script>
+  <script type="module" src="/src/login.jsx"></script>
 </body>
 </html>
+
