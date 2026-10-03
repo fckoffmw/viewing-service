@@ -1,6 +1,6 @@
-const AuthButton = ({text}) => {
+const AuthButton = ({ text, isLoading }) => {
     return (
-        <button type="submit" className="auth-btn">{text}</button>
+        <button type="submit" className="auth-btn" disabled={isLoading}>{text}</button>
     )
 }
 

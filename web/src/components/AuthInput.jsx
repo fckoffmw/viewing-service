@@ -5,10 +5,12 @@ const AuthInput = (props) => {
         placeholder,
         autoComplete,
         minLength,
+        value,
+        onChange,
     } = props
 
     return (
-            <input className="auth-input" type={type} id={id} placeholder={placeholder} autoComplete={autoComplete} required minLength={minLength} />
+            <input value={value} onChange={onChange} className="auth-input" type={type} id={id} placeholder={placeholder} autoComplete={autoComplete} required minLength={minLength} />
     )
 }
 
