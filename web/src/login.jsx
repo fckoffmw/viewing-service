@@ -3,7 +3,7 @@ import AuthInput from './components/AuthInput'
 import AuthSwitch from './components/AuthSwitch'
 import AuthButton from './components/AuthButton'
 import AuthLayout from './components/AuthLayout'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const LoginPage = () => {
     const [username, setUsername] = useState('')
@@ -11,6 +11,21 @@ const LoginPage = () => {
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const buttonText = isLoading ? 'Вход...' : 'Войти'
+
+    useEffect(() => {
+
+        const checkAlreadyLogged = async () => {
+            try {
+                const res = await fetch('/auth/me')
+                if (res.ok) {
+                    window.location.href = '/index.html'
+                }
+            } catch {
+                console.log('сервер не ответил')
+            }
+        }
+        checkAlreadyLogged()
+    }, [])
 
     const handleUsernameChange = (e) => {
         setUsername(e.target.value)
@@ -44,6 +59,7 @@ const LoginPage = () => {
             setIsLoading(false)
         }
     }
+
 
     return (
         <AuthLayout onSubmit={handleSubmit} error={error} title="Вход" id="login-form" footer={<AuthSwitch question="Ещё нет аккаунта?" href="/register.html" text="Регистрация" />}>

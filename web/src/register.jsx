@@ -1,9 +1,9 @@
-import {createRoot} from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import AuthInput from './components/AuthInput'
 import AuthSwitch from './components/AuthSwitch'
 import AuthButton from './components/AuthButton'
 import AuthLayout from './components/AuthLayout'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const RegisterPage = () => {
     const [username, setUsername] = useState('')
@@ -11,6 +11,20 @@ const RegisterPage = () => {
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const buttonText = isLoading ? 'Регистрация...' : 'Зарегистрироваться'
+
+    useEffect(() => {
+        const checkAlreadyLogged = async () => {
+            try {
+                const res = await fetch('/auth/me')
+                if (res.ok) {
+                    window.location.href = '/index.html'
+                }
+            } catch {
+                console.log('сервер не ответил')
+            }
+        }
+        checkAlreadyLogged()
+    }, [])
 
     const handleUsernameChange = (e) => {
         setUsername(e.target.value)
@@ -46,10 +60,10 @@ const RegisterPage = () => {
     }
 
     return (
-        <AuthLayout onSubmit={handleSubmit} error={error} title="Регистрация" id="register-form" footer={<AuthSwitch question="Есть аккаунт?" href="/login.html" text="Вход"/>}>
-            <AuthInput value={username} onChange={handleUsernameChange} type="text" id="username" placeholder="Имя пользователя" minLength={3} autoComplete="username"/>
-            <AuthInput value={newPassword} onChange={handleNewPasswordChange} type="password" id="password" placeholder="Пароль" minLength={4} autoComplete="new-password"/>
-            <AuthButton text={buttonText} isLoading={isLoading}/>
+        <AuthLayout onSubmit={handleSubmit} error={error} title="Регистрация" id="register-form" footer={<AuthSwitch question="Есть аккаунт?" href="/login.html" text="Вход" />}>
+            <AuthInput value={username} onChange={handleUsernameChange} type="text" id="username" placeholder="Имя пользователя" minLength={3} autoComplete="username" />
+            <AuthInput value={newPassword} onChange={handleNewPasswordChange} type="password" id="password" placeholder="Пароль" minLength={4} autoComplete="new-password" />
+            <AuthButton text={buttonText} isLoading={isLoading} />
         </AuthLayout>
     )
 }
