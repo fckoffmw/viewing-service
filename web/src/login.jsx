@@ -3,63 +3,22 @@ import AuthInput from './components/AuthInput'
 import AuthSwitch from './components/AuthSwitch'
 import AuthButton from './components/AuthButton'
 import AuthLayout from './components/AuthLayout'
-import { useState, useEffect } from 'react'
+import useRedirectIfLoggedIn from './hooks/useRedirectIfLoggedIn'
+import useAuthForm from './hooks/useAuthForm'
 
 const LoginPage = () => {
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
+    useRedirectIfLoggedIn()
+
+    const {
+        username,
+        password,
+        error,
+        isLoading,
+        handlePasswordChange,
+        handleUsernameChange,
+        handleSubmit,
+    } = useAuthForm('/auth/login', 'Ошибка входа')
     const buttonText = isLoading ? 'Вход...' : 'Войти'
-
-    useEffect(() => {
-
-        const checkAlreadyLogged = async () => {
-            try {
-                const res = await fetch('/auth/me')
-                if (res.ok) {
-                    window.location.href = '/index.html'
-                }
-            } catch {
-                console.log('сервер не ответил')
-            }
-        }
-        checkAlreadyLogged()
-    }, [])
-
-    const handleUsernameChange = (e) => {
-        setUsername(e.target.value)
-    }
-
-    const handlePasswordChange = (e) => {
-        setPassword(e.target.value)
-    }
-
-    const handleSubmit = async (e) => {
-        e.preventDefault()
-        setError('')
-        setIsLoading(true)
-        try {
-            const res = await fetch('/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: username.trim(), password: password }),
-            })
-            const data = await res.json()
-
-            if (res.ok) {
-                window.location.href = '/index.html'
-                return
-            }
-
-            setError(data.error || 'Ошибка входа')
-        } catch {
-            setError('Ошибка соединения')
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
 
     return (
         <AuthLayout onSubmit={handleSubmit} error={error} title="Вход" id="login-form" footer={<AuthSwitch question="Ещё нет аккаунта?" href="/register.html" text="Регистрация" />}>
