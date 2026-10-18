@@ -150,13 +150,13 @@ function applyRemoteCommand(type, data) {
 async function checkAuth() {
     try {
         var res = await fetch("/auth/me");
-        if (!res.ok) { window.location.href = "/login.html"; return false; }
+        if (!res.ok) { window.location.href = "/login"; return false; }
         var user = await res.json();
         currentUsername = user.username;
         currentUserId = user.id;
         return true;
     } catch {
-        window.location.href = "/login.html";
+        window.location.href = "/login";
         return false;
     }
 }

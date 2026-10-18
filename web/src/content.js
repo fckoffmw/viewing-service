@@ -17,20 +17,20 @@ checkAuth();
 async function checkAuth() {
     try {
         var res = await fetch("/auth/me");
-        if (!res.ok) { window.location.href = "/login.html"; return; }
+        if (!res.ok) { window.location.href = "/login"; return; }
         var user = await res.json();
         currentUserId = user.id;
         currentUsername = user.username;
         document.getElementById("nav-username").textContent = user.username;
         loadSources();
     } catch {
-        window.location.href = "/login.html";
+        window.location.href = "/login";
     }
 }
 
 async function logout() {
     await fetch("/auth/logout", { method: "POST" });
-    window.location.href = "/login.html";
+    window.location.href = "/login";
 }
 
 // --- load sources ---

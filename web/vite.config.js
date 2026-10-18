@@ -25,10 +25,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
+        rooms: resolve(__dirname, 'rooms.html'),
         content: resolve(__dirname, 'content.html'),
-        login: resolve(__dirname, 'login.html'),
         profile: resolve(__dirname, 'profile.html'),
-        register: resolve(__dirname, 'register.html'),
         room: resolve(__dirname, 'room.html'),
         demo: resolve(__dirname, 'demo/player-api-demo.html'),
       },

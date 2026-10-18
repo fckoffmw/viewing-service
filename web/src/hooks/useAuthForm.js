@@ -27,7 +27,7 @@ const useAuthForm = (url, errorText) => {
             const data = await res.json()
 
             if (res.ok) {
-                window.location.href = '/index.html'
+                window.location.href = '/rooms.html'
                 return
             }
 
