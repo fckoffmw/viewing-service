@@ -1,6 +1,8 @@
-const AuthSwitch = ({href, question, text}) => {
+import { Link } from 'react-router'
+
+const AuthSwitch = ({to, question, text}) => {
     return (
-        <p className="auth-switch">{question} <a href={href}>{text}</a></p>
+        <p className="auth-switch">{question} <Link to={to}>{text}</Link></p>
     )
    
 }

@@ -6,7 +6,7 @@ const useRedirectIfLoggedIn = () => {
             try {
                 const res = await fetch('/auth/me')
                 if (res.ok) {
-                    window.location.href = '/rooms.html'
+                    window.location.replace('/rooms.html')
                 }
             } catch {
                 console.log('сервер не ответил')

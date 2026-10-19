@@ -1,0 +1,51 @@
+.not-found {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  padding: 64px 16px;
+}
+
+.not-found__card {
+  width: 100%;
+  max-width: 420px;
+  padding: 40px 32px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 128, 171, 0.15);
+  border-radius: 16px;
+  backdrop-filter: blur(4px);
+}
+
+.not-found__code {
+  margin-bottom: 16px;
+  font-size: 88px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 4px;
+  background: linear-gradient(135deg, #fce4ec 0%, #ff80ab 50%, #ff4081 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 24px rgba(255, 64, 129, 0.35));
+}
+
+.not-found__title {
+  margin-bottom: 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.not-found__text {
+  margin-bottom: 28px;
+  color: #888;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.not-found__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}

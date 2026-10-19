@@ -44,6 +44,8 @@ body::before {
 }
 
 .auth-form {
+  position: relative;
+  z-index: 1;
   max-width: 380px;
   margin: 48px auto 0;
   padding: 24px;
