@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 
 const useAuthForm = (url, errorText) => {
     const [username, setUsername] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
     const [isLoading, setIsLoading] = useState(false)
+
+    const navigate = useNavigate()
 
     const handleUsernameChange = (e) => {
         setUsername(e.target.value)
@@ -27,7 +30,7 @@ const useAuthForm = (url, errorText) => {
             const data = await res.json()
 
             if (res.ok) {
-                window.location.href = '/rooms.html'
+                navigate('/')
                 return
             }
 

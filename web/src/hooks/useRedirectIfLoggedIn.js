@@ -1,12 +1,14 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router'
 
 const useRedirectIfLoggedIn = () => {
+    const navigate = useNavigate()
     useEffect(() => {
         const checkAlreadyLogged = async () => {
             try {
                 const res = await fetch('/auth/me')
                 if (res.ok) {
-                    window.location.replace('/rooms.html')
+                    navigate('/', { replace: true })
                 }
             } catch {
                 console.log('сервер не ответил')
